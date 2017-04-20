@@ -1,0 +1,173 @@
+
+<!-- saved from url=(0067)file:///C:/Users/YAHAHAHAHA/Desktop/HTML5_game/h_scroll_step_2.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"> 
+
+
+</head>
+
+<body>
+
+العَرَبِيَّة<br>
+測試<br>
+อักษรไทย<br>
+ру́сский язы́к<br>
+
+<canvas id="canvas" width="800" height="600"></canvas>
+<div id="div_test">測試</div>
+<script>
+
+var canvas_element = document.getElementById("canvas");
+var ctx=canvas_element.getContext("2d");
+ctx.fillStyle="#00CCCC";
+ctx.fillRect(0, 0, 800, 600);
+//函式使用方式是,標出左上角座標 跟 右下角座標
+//座標系是,左上角為原點,往下跟往右都是增加各自的座標軸這樣!!
+//啊,記錯了,是左上角,跟要畫得矩形大小
+
+ctx.fillStyle="#000000";
+//這個是調整填的顏色,填是根據fill決定
+//如果是線條的話,印象中是調整strokeStyle
+//當然配合的函式,就不是fillRect()了
+
+
+
+ctx.fillRect(0, 580, 600, 600-580); //左下角
+ctx.fillRect(640, 580, 800-640, 600-580); //右下角
+//我先用寫死的方式,不然理論上800跟600
+//應該要用長度跟高度的變數來處理
+//其實印象中Canvas有高度跟寬度的屬性可以直接引用
+//但暫時想不起來是不是height跟width,暫時用取巧的方式處理
+
+ctx.fillStyle="#FFFFFF"; //為了除錯方便,才調整顏色
+ctx.fillRect(680,480,720-680,580-480);
+//右下角的 類似超級瑪莉歐的水管那樣的矩形
+
+ctx.fillRect(200,580-70,300,20); //第一階跳板
+ctx.fillRect(480,580-70-70,220,20)//第二階跳板
+
+//也就是說在寫的過程中,直接把示意圖給修改掉了這樣
+//這樣就大致上畫完了
+//稍微說明下採用的常數
+//580是地板的高度最高處,也就是俗稱的 海拔
+//那70,是想說,假若角色最高只能跳到80的話
+//那70理論上跳得過去(假若是從主角的腳算起,然後碰撞偵測順利的狀況下)
+//也就是說,在畫的過程中
+//是把右下角的那個柱子,當作正常跳不過的障礙物
+//需要倚賴左半邊的一二階跳板來過
+//這樣感覺上設計較合理些
+//不過,若第一次玩這類遊戲,就是這款的話
+//這種做法也許不適合當第一關
+//因為按鍵時間長短,影響跳躍高度
+//是從超級瑪莉歐、洛克人一類的遊戲開始有的設計
+//現在網路遊戲為何要有新手引導?
+//因為很多網路遊戲,是針對除了那款網路遊戲以外
+//沒玩過半款遊戲的玩家設計的
+//(這類玩家通常比較專一,有錢的話比較肯花,也會長期待在一個遊戲)
+//早期的硬體空間,不適合做新手引導
+//因此在介面與操作上就很需要下功夫
+//雖然通常玩的玩家都花大錢買機台,或者是去遊樂廠遊戲機投幣
+//以金錢上的損失來看
+//對於一款遊戲的耐性是比較高的,比較願意多次去嘗試
+//(不過設計得不夠直覺的話,
+//像有些人玩洛克人大概6代以後吧,有重力人那個
+//可能不知道洛克人可以換武器,然後可以滑行、蓄力這樣,
+//好像是按住↓跟一個鍵就可以滑行,
+//打星星人跟此外至少某一關要用到滑行)
+
+document.getElementById("div_test").innerHTML="測試";
+
+//先畫下主角,用意是配合drawImage函式使用
+//不然以我美工水平,其實不用刻意用個圖檔來當主角
+//就用最早以前的那個主角好了
+//雖然個人一開始畫的那個大圖檔好像消失了
+
+function fox_main_role(id,img,left,top,zIndex,width,height)
+{
+	this.id=id;
+	this.image = new Image();
+	this.image.src=img;
+	
+	var self=this;
+	
+	this.image.onload = function(){self.draw_flag=true;}
+	this.left= left;
+	this.top= top;
+	this.zIndex = zIndex; 
+	this.width=width;
+	this.height=height;
+	this.draw_flag = false;
+	
+	/*$(canvas_element).on('handleClick', function(e, mouse) { 
+
+        if (self.left < mouse.x && 
+            self.left + self.width > mouse.x && 
+            self.top < mouse.y && 
+            self.top + self.height > mouse.y) { 
+			
+			disappear(self);
+        } 
+    });
+	
+	$(canvas_element).on('rightClick', function(e, mouse) { 
+		//這樣寫好像怪怪的
+		//圖檔的一部分,碰到圓形炸彈範圍就會消失
+		//所以可能不是用isPointInPath
+		
+		//要用矩形與圓形碰撞
+		//公式還要再想陣子,先用現成的
+		//測試應該沒問題
+		//不過opera瀏覽器的右鍵功能特別討厭
+		//似乎有時會因此失效
+		
+		collision_detect(mouse,self);
+    });*/
+}
+
+/* fox_main_role.prototype.move=function() {
+	if(this.top <= canvas_element.height)
+	{
+		this.top += 10;
+	}
+	else
+	{
+		this.top = -10;
+	}
+	
+	if(Math.random()<0.4)
+	{
+		if(this.left > 10)
+		{
+			this.left -= 10;
+		}
+	}
+	else if(Math.random()<0.8)
+	{
+		if(this.left < canvas_element.width-10)
+		{
+			this.left += 10;
+		}
+	}
+	
+}*/
+
+var test_1 = new fox_main_role("第1個","fox.jpg",0,0,3,180,204);
+
+var elements = [];
+	
+// Add element.
+elements.push(test_1);
+
+function re_draw()
+{
+	elements.forEach(function(element) {
+		if(element.draw_flag)
+		{
+			ctx.drawImage(element.image,element.left, element.top);
+		}
+	});
+}
+
+var timer = setInterval(re_draw,50);
+</script>
+
+</body></html>
