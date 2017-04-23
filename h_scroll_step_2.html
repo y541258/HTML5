@@ -6,8 +6,8 @@
 
 <body>
 
-<input type="file" accept="audio/*;capture=microphone">
-<input type="file" accept="image/*;capture=camera">
+<input type="file" accept="audio/*
+capture=microphone">
 
 العَرَبِيَّة<br>
 測試<br>
@@ -161,6 +161,22 @@ elements.push(test_1);
 
 function re_draw()
 {
+	ctx.fillStyle="#00CCCC";
+	ctx.fillRect(0, 0, 800, 600);
+	ctx.fillStyle="#000000";
+	ctx.fillRect(0, 580, 600, 600-580); //左下角
+	ctx.fillRect(640, 580, 800-640, 600-580); //右下角
+	ctx.fillStyle="#FFFFFF"; //為了除錯方便,才調整顏色
+	ctx.fillRect(680,480,720-680,580-480);
+	//右下角的 類似超級瑪莉歐的水管那樣的矩形
+	ctx.fillRect(200,580-70,300,20); //第一階跳板
+	ctx.fillRect(480,580-70-70,220,20)//第二階跳板
+
+/*
+↑此段為後來增加的背景重繪
+有興趣的可以把上面這段利用註解去掉看效果差異
+*/
+
 	elements.forEach(function(element) {
 		if(element.draw_flag)
 		{
@@ -170,6 +186,29 @@ function re_draw()
 }
 
 var timer = setInterval(re_draw,50);
+
+document.addEventListener("keydown",move_in_maze,false);
+
+function move_in_maze(e){
+  //if(e.keyCode==37){direction=3; step++; step%=3; w-=5;}	//左
+  //if(e.keyCode==38){direction=0; step++; step%=3; h-=5;}	//上
+  //if(e.keyCode==39){direction=1; step++; step%=3; w+=5;}	//右
+  //if(e.keyCode==40){direction=2; step++; step%=3; h+=5;}	//下
+  
+  if(e.keyCode==37){test_1.left-=5;}	//左
+  //if(e.keyCode==38){test_1.top-=5;}	//上
+  //先處理跳躍
+  //重繪那邊,要整個畫面重繪
+  //這也是HTML5的缺點
+  //Canvas本身在繪製時,是整個畫面刷新
+  //也就是相對耗電(在移動裝置上較為明顯)
+  //正常的作法是,只改變跟上張圖不同的地方
+  //該技術名字叫做 dirty rectangle(印象中,大陸直接稱為髒矩形)
+  //也就是說只更新需要重畫的地方
+  if(e.keyCode==39){test_1.left+=5;}	//右
+  if(e.keyCode==40){test_1.top+=5;}	//下
+  }
+
 </script>
 </body>
 </html>
