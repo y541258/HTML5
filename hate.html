@@ -1,0 +1,106 @@
+<!DOCTYPE>
+<meta charset="utf-8"> 
+<html>
+<head>
+</head>
+
+<body>
+
+<canvas id="canvas" width="800" height="600" ></canvas>
+<div id="div_test"></div>
+<script>
+//此份檔案是用來實作使用仇恨值建立陣型系統用的
+
+//先畫圖再說
+
+var canvas_element = document.getElementById("canvas");
+var ctx=canvas_element.getContext("2d");
+ctx.fillStyle="#00CCCC";
+ctx.fillRect(0, 0, 800, 600);
+//函式使用方式是,標出左上角座標 跟 右下角座標
+//座標系是,左上角為原點,往下跟往右都是增加各自的座標軸這樣!!
+//啊,記錯了,是左上角,跟要畫得矩形大小
+
+ctx.fillStyle="#000000";
+//開始畫玩家1(自己)的九宮格
+ctx.fillRect(100,100,100,100);
+ctx.fillRect(210,100,100,100);
+ctx.fillRect(320,100,100,100);
+ctx.fillRect(100,210,100,100);
+ctx.fillRect(210,210,100,100);
+ctx.fillRect(320,210,100,100);
+ctx.fillRect(100,320,100,100);
+ctx.fillRect(210,320,100,100);
+ctx.fillRect(320,320,100,100);
+ctx.fillStyle="#FFFFFF";
+//玩家2或者說敵人的九宮格
+ctx.fillRect(100+350,100,100,100);
+ctx.fillRect(210+350,100,100,100);
+ctx.fillRect(320+350,100,100,100);
+ctx.fillRect(100+350,210,100,100);
+ctx.fillRect(210+350,210,100,100);
+ctx.fillRect(320+350,210,100,100);
+ctx.fillRect(100+350,320,100,100);
+ctx.fillRect(210+350,320,100,100);
+ctx.fillRect(320+350,320,100,100);
+
+document.getElementById("div_test").innerHTML="測試";
+
+//先畫下主角,用意是配合drawImage函式使用
+//不然以我美工水平,其實不用刻意用個圖檔來當主角
+//就用最早以前的那個主角好了
+//雖然個人一開始畫的那個大圖檔好像消失了
+
+/*function fox_main_role(id,img,left,top,zIndex,width,height)
+{
+	this.id=id;
+	this.image = new Image();
+	this.image.src=img;
+	
+	var self=this;
+	
+	this.image.onload = function(){self.draw_flag=true;}
+	this.left= left;
+	this.top= top;
+	this.zIndex = zIndex; 
+	this.width=width;
+	this.height=height;
+	this.draw_flag = false;
+}
+
+var test_1 = new fox_main_role("第1個","fox.jpg",0,600-20-204,3,180,204);
+
+var elements = [];
+	
+// Add element.
+elements.push(test_1);
+*/
+
+/*function re_draw()
+{
+	ctx.fillStyle="#00CCCC";
+	ctx.fillRect(0, 0, 800, 600);
+	ctx.fillStyle="#000000";
+	ctx.fillRect(0, 580, 600, 600-580); //左下角
+	ctx.fillRect(640, 580, 800-640, 600-580); //右下角
+	ctx.fillStyle="#FFFFFF"; //為了除錯方便,才調整顏色
+	ctx.fillRect(680,480,720-680,580-480);
+	//右下角的 類似超級瑪莉歐的水管那樣的矩形
+	ctx.fillRect(200,580-70,300,20); //第一階跳板
+	ctx.fillRect(480,580-70-70,220,20)//第二階跳板
+
+
+	elements.forEach(function(element) {
+		if(element.draw_flag)
+		{
+			ctx.drawImage(element.image,element.left, element.top);
+		}
+	});
+}*/
+
+//var timer = setInterval(re_draw,50);
+
+//document.addEventListener("keydown",jump,false);
+</script>
+</body>
+</html>
