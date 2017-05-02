@@ -206,19 +206,16 @@ var pixel_page_content = [];
 //因為往後有想要做樣式(pattern)功能
 //我找下tetris_step_14.html
 
-canvas.setAttribute("height",600);
-canvas.setAttribute("width",800);
-
 for(var i=0;i<canvas.width/cell_width;i++)
 {
 	pixel_page_content[i] = [];
 
-	for(var j=0;j<canvas.heigth/cell_width;j++)
+	for(var j=0;j<canvas.height/cell_width;j++)
 	{
 		pixel_page_content[i][j] = 0;
 	}
 	
-	console.dir(pixel_page_content);
+	console.log(pixel_page_content);
 	
 	//點陣圖要考慮 1P色 2P色 (自古紅藍出CP)之類的
 	//換圖板能順利
