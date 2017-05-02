@@ -1,0 +1,190 @@
+<!DOCTYPE>
+<meta charset="utf-8"> 
+<html>
+<head>
+</head>
+
+<body>
+
+<canvas id="canvas" width="800" height="600" ></canvas>
+<div id="div_test"></div>
+<script>
+//這份檔案要做的事情是
+//用網頁充當繪圖軟體
+//畫點陣圖用的
+
+//所以第一步是
+//先對應(map,mapping)好,螢幕座標與畫布(canvas)座標的關係
+//哦,這個在以前的檔案 vitality_example2.html有寫過
+//雖然目前在Github中那檔案是處於隱角模式(而且絕對選不到)
+
+//第二步是
+//做個框線功能
+//可開啟跟關閉
+//雖然談不上偷懶
+//但我這次還是用toggle模式吧(就單鍵型開關)
+
+//印象中框線的英文是 受到過往 格狀的影響
+//在上述詳盡的歷史背景敘述後
+//我們知道框線的英文大概是grid
+//如果不是的話
+//沒關係,目前就先用這名字
+
+//因此這次主要是做個 按畫面或按鍵開啟關閉格線的功能
+//為了省事起見
+//我決定按 g鍵 來開啟或關閉格線
+
+
+
+var canvas_element = document.getElementById("canvas");
+var ctx=canvas_element.getContext("2d");
+ctx.fillStyle="#FFFFFF";
+//再次提醒
+//可偷懶寫為
+//ctx.fillStyle="white";
+ctx.fillRect(0, 0, 800, 600);
+
+
+//↓之前檔案的程式片段
+//可能會用到所以暫時保留
+/*function fox_main_role(id,img,left,top,zIndex,width,height)
+{
+	this.id=id;
+	this.image = new Image();
+	this.image.src=img;
+	
+	var self=this;
+	
+	this.image.onload = function(){self.draw_flag=true;}
+	this.left= left;
+	this.top= top;
+	this.zIndex = zIndex; 
+	this.width=width;
+	this.height=height;
+	this.draw_flag = false;
+}
+
+var test_1 = new fox_main_role("第1個","fox.jpg",0,600-20-204,3,180,204);
+
+var elements = [];
+	
+// Add element.
+elements.push(test_1);
+*/
+
+
+var timer = setInterval(re_draw,50);
+var tempX;
+var tempY;
+
+document.addEventListener("click",m_click,false);
+document.addEventListener("mousemove",m_move,false);
+document.addEventListener("keydown",one_key_destory,false);
+
+function re_draw()
+{
+	grid_related();
+	div_test.innerHTML = tempX+ "," +tempY + "," + grid_flag;
+}
+
+
+function m_click(e)
+{
+
+ 
+ ctx.fillStyle = "#000000";
+ //ctx.fillRect(0,0,ctx.width,ctx.height);
+ //腦殘找死過程↑,等下執行結果有誤的話就...
+ //執行結果不會有誤,僅是不如預期
+ //ctx.fillRect(0,0,800,600);
+ //嗯,重劍無鋒,大巧不工
+ 
+ ctx.fillRect(tempX-15,tempY-15,30,30);
+ //隕石砸到月球表面
+ //不過這真的是用點的,因為是click事件
+}
+
+function m_move(e)
+{
+ tempX = e.pageX- canvas_element.offsetLeft;
+ tempY = e.pageY- canvas_element.offsetTop;
+}
+
+//-----------------step 2主要差異-------------------------------
+//這時用Linux底下的diff或Windows底下的功能優勢還算明顯
+
+var grid_flag = true;
+var fill_flag = false;
+var cell_width = 30;
+
+function grid_related()
+{
+	if(grid_flag)
+	{
+		if(!fill_flag)
+		{
+		ctx.fillStyle = "white";
+		ctx.fillRect(0,0,800,600);
+		
+		for(var i=0;i<80;i++)
+		//先採用重劍無鋒,大巧無工法
+		//意思是:用常數取代變數
+		{
+			for(var j=0;j<60;j++)
+			{
+				//ctx.fillStyle = "green";
+				ctx.fillStyle = "#00FF00";
+				//↑上句依然是找死過程
+				//我找死過程的意思是,程式在需要測試的時候
+				//一次測兩種以上的情況
+				//這情況就類似於
+				//打籃球的時候,期望在三分線時,高爾夫球命中目標
+				//其實可能性也不小啦
+				ctx.moveTo(i*cell_width,j*cell_width);
+				ctx.lineTo((i+1)*cell_width,j*cell_width);
+				ctx.lineTo((i+1)*cell_width,(j+1)*cell_width);
+				ctx.lineTo(i*cell_width,(j+1)*cell_width);
+				ctx.stroke();
+				
+				//執行時好像會慢一些
+				//可能是re_draw太快導致
+				//此外目前程式運作結果
+				//給人種萬花筒寫輪眼的感覺
+				//大概是線條太多
+				//就Canvas這類繪圖功能大概是很吃資源吧
+				
+				//之所以設fill_flag
+				//是想要減少重繪的情形
+				//但目前感覺是過於lag了
+				}
+			}
+		
+			fill_flag = true;
+		}
+	}
+	else
+	{
+		ctx.fillStyle = "white";
+		ctx.fillRect(0,0,800,600);
+		
+		fill_flag = false;
+	}
+}
+
+function one_key_destory(e)
+{
+	if(e.keyCode == 71)
+	{
+		grid_flag = !grid_flag;
+	}
+}
+
+//從程式執行結果
+//大概可以看出來第三步要做什麼
+//雖然目前與下一步第三步,都是屬於基礎功能實現的部份
+//也就是目前的功能與小畫家和photoshop或其它繪圖軟體相比
+//沒有換的理由
+//(換的理由可能有些牽強或者說哀愁)
+</script>
+</body>
+</html>
