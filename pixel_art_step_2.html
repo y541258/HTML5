@@ -99,7 +99,7 @@ function m_click(e)
  //ctx.fillRect(0,0,800,600);
  //嗯,重劍無鋒,大巧不工
  
- ctx.fillRect(tempX-15,tempY-15,30,30);
+ ctx.fillRect(tempX-15,tempY-15,40,40);
  //隕石砸到月球表面
  //不過這真的是用點的,因為是click事件
 }
@@ -115,7 +115,7 @@ function m_move(e)
 
 var grid_flag = true;
 var fill_flag = false;
-var cell_width = 30;
+var cell_width = 40;
 
 function grid_related()
 {
@@ -126,11 +126,16 @@ function grid_related()
 		ctx.fillStyle = "white";
 		ctx.fillRect(0,0,800,600);
 		
-		for(var i=0;i<80;i++)
+		//不清楚會不會被優化
+		//沒被優化的情況下
+		//這邊可能會每次都計算
+		//但我隱約覺得常見的瀏覽器
+		//也許會優化這類寫法
+		for(var i=0;i<800/cell_width;i++)
 		//先採用重劍無鋒,大巧無工法
 		//意思是:用常數取代變數
 		{
-			for(var j=0;j<60;j++)
+			for(var j=0;j<600/cell_width;j++)
 			{
 				//ctx.fillStyle = "green";
 				ctx.fillStyle = "#00FF00";
