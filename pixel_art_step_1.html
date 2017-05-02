@@ -1,0 +1,89 @@
+<!DOCTYPE>
+<meta charset="utf-8"> 
+<html>
+<head>
+</head>
+
+<body>
+
+<canvas id="canvas" width="800" height="600" ></canvas>
+<div id="div_test"></div>
+<script>
+//這份檔案要做的事情是
+//用網頁充當繪圖軟體
+//畫點陣圖用的
+
+//所以第一步是
+//先對應(map,mapping)好,螢幕座標與畫布(canvas)座標的關係
+//
+
+
+var canvas_element = document.getElementById("canvas");
+var ctx=canvas_element.getContext("2d");
+ctx.fillStyle="#FFFFFF";
+//再次提醒
+//可偷懶寫為
+//ctx.fillStyle="white";
+ctx.fillRect(0, 0, 800, 600);
+
+
+//↓之前檔案的程式片段
+//可能會用到所以暫時保留
+/*function fox_main_role(id,img,left,top,zIndex,width,height)
+{
+	this.id=id;
+	this.image = new Image();
+	this.image.src=img;
+	
+	var self=this;
+	
+	this.image.onload = function(){self.draw_flag=true;}
+	this.left= left;
+	this.top= top;
+	this.zIndex = zIndex; 
+	this.width=width;
+	this.height=height;
+	this.draw_flag = false;
+}
+
+var test_1 = new fox_main_role("第1個","fox.jpg",0,600-20-204,3,180,204);
+
+var elements = [];
+	
+// Add element.
+elements.push(test_1);
+*/
+
+function re_draw()
+{
+  div_test.innerHTML = tempX+ "," +tempY;
+}
+
+var timer = setInterval(re_draw,50);
+
+document.addEventListener("click",m_click,false);
+document.addEventListener("mousemove",m_move,false);
+
+var tempX;
+var tempY;
+
+function m_click(e)
+{
+
+ 
+ ctx.fillStyle = "#000000";
+ //ctx.fillRect(0,0,ctx.width,ctx.height);
+ //腦殘找死過程↑,等下執行結果有誤的話就...
+ //執行結果不會有誤,僅是不如預期
+ ctx.fillRect(0,0,800,600);
+ //嗯,重劍無鋒,大巧不工
+}
+
+function m_move(e)
+{
+ tempX = e.pageX- canvas_element.offsetLeft;
+ tempY = e.pageY- canvas_element.offsetTop;
+}
+</script>
+</body>
+</html>
