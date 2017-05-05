@@ -1,0 +1,22 @@
+<!DOCTYPE>
+<meta charset="utf-8"> 
+<html>
+<head>
+</head>
+<body>
+
+<div id="div_test"></div>
+<script>
+
+document.getElementById("div_test").innerHTML += (2%2==0)?"T":"F";
+//判斷2除2的餘數是否為0,是的話,回傳?後面的那個,不是的話,回傳:後面的那個
+
+document.getElementById("div_test").innerHTML += "<br>";
+//測試畫面後,發現自己忘記換行,雖然有沒有換行也無妨
+
+document.getElementById("div_test").innerHTML += (2%2!=0)?"T":"F";
+//判斷2除2的餘數是否"不"為0,是的話,回傳?後面的那個,不是的話,回傳:後面的那個
+
+</script>
+</body>
+</html>
