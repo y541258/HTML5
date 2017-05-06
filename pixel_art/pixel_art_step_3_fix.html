@@ -1,0 +1,280 @@
+<!DOCTYPE>
+<meta charset="utf-8"> 
+<html>
+<head>
+</head>
+
+<body>
+
+<script src="jquery-1.11.1.js">
+//相對路徑的寫法我有點忘記
+//先投機取巧在各個檔案下使用此jquery-1.11.1.js版本
+//雖然就算不用相對路徑
+//也可以直接用http連到有提供jquery-1.11.1.js這類檔案的網頁空間就是了
+//總之,為了早點睡覺
+//改天再處理這邊
+
+//導入jQuery函式庫,主要是為了引入劇情文字檔用
+//用on函式時也要用到jQuery
+</script>
+
+<canvas id="canvas" width="800" height="600" ></canvas>
+<div id="div_test"></div>
+<script>
+//這份檔案要做的事情是
+//用網頁充當繪圖軟體
+//畫點陣圖用的
+
+//所以第一步是
+//先對應(map,mapping)好,螢幕座標與畫布(canvas)座標的關係
+//哦,這個在以前的檔案 vitality_example2.html有寫過
+//雖然目前在Github中那檔案是處於隱角模式(而且絕對選不到)
+
+//第二步是
+//做個框線功能
+//可開啟跟關閉
+//雖然談不上偷懶
+//但我這次還是用toggle模式吧(就單鍵型開關)
+
+//印象中框線的英文是 受到過往 格狀的影響
+//在上述詳盡的歷史背景敘述後
+//我們知道框線的英文大概是grid
+//如果不是的話
+//沒關係,目前就先用這名字
+
+//因此這次主要是做個 按畫面或按鍵開啟關閉格線的功能
+//為了省事起見
+//我決定按 g鍵 來開啟或關閉格線
+
+//從程式執行結果
+//大概可以看出來第三步要做什麼
+//雖然目前與下一步第三步,都是屬於基礎功能實現的部份
+//也就是目前的功能與小畫家和photoshop或其它繪圖軟體相比
+//沒有換的理由
+//(換的理由可能有些牽強或者說哀愁)
+
+//自然是用陣列與 點與矩形的碰撞偵測
+//(所以需要有個步驟,
+//是那種處理滑鼠拖曳的畫法,我目前只能用點的)
+//我猜所謂的滑鼠拖曳,就是在移動的同時,click沒有放掉
+//也就是說是倚賴
+//click_flag(一類的布林變數或者說是狀態指示變數)
+//來進行
+
+//看要不要或是否能順利在 這步 了結掉
+
+//第三步
+//先處理
+//點下去,點到格子內肯定只填滿一格的功能
+//簡單來說就是...
+//類似油漆桶、點陣的概念
+//因為Canvas可以另存圖片
+//所以作品的縮放
+//可以另存新檔後,再自行處理
+//當然我也是可以用Canvas處理
+//但在IE的ActiveX的情況下以外
+//若要存檔
+//基本上不是要提供Server與網頁、圖床空間一類的
+//但你有Server時
+//其實就不算是純網頁設計了
+//就是說,至少很可能是沒辦法在file:///底下開啟
+//還能順利運作的那種網頁設計
+//就是只能讓使用者自行存檔
+//類似《式姬-幽界之門》網頁遊戲
+//截圖的功能
+//需要做成像這張圖(之後另外傳成Github上)
+
+var canvas_element = document.getElementById("canvas");
+var ctx=canvas_element.getContext("2d");
+ctx.fillStyle="#FFFFFF";
+//再次提醒
+//可偷懶寫為
+//ctx.fillStyle="white";
+ctx.fillRect(0, 0, 800, 600);
+
+var grid_flag = true;
+var fill_flag = false;
+var cell_width = 40;
+
+
+//step_3.html的主要更動部分!!
+//********************************************************************
+function temp_design(id,img,left,top,zIndex,width,height)
+{
+	this.id=id;
+	this.image = img;
+	//this.image = new Image();
+	//this.image.src=img;
+	
+	var self=this;
+	
+	//this.image.onload = function(){self.draw_flag=true;}
+	//↑此行廢棄
+	this.left= left;
+	this.top= top;
+	this.zIndex = zIndex; 
+	this.width=width;
+	this.height=height;
+	this.draw_flag = false;
+	
+	$(canvas_element).on('handleClick', function(e, mouse) { 
+	//當此物件被滑鼠左鍵點擊時要做的事情
+	//這邊僅是採用這概念
+	//就算格線看不到
+	//我主要是倚賴top,left,width,height來做的碰撞偵測
+	//這樣再填色就好
+	//話是這麼說啦
+	//我想下這邊要直接填色還是
+	//先傳些變數或狀態變數一類的東西
+	//在別的函數處理
+	//最終方案沒決定
+	//但為了簡單、好測試起見
+	//我會先確定直接在這邊著色沒問題時
+	//以後再考慮要不要改這設計
+		console.dir(mouse);
+
+        if (self.left < mouse.x && 
+            self.left + self.width > mouse.x && 
+            self.top < mouse.y && 
+            self.top + self.height > mouse.y) { 
+			
+			//disappear(self);
+			//↑假若要呼叫別的函數來處理的話
+			//就用這方式吧
+			self.draw_flag = true;
+        } 
+    });
+}
+//********************************************************************
+
+
+//var test_1 = new temp_design("第1個","fox.jpg",0,600-20-204,3,180,204);
+//↑上行廢棄
+
+var elements = [];
+var pixel_cell = [];
+	
+var pixel_page_content = [];
+
+for(var i=0;i<800/cell_width;i++)
+{
+	pixel_page_content[i] = [];
+	pixel_cell[i] = [];
+
+	for(var j=0;j<600/cell_width;j++)
+	{
+		pixel_page_content[i][j] = 0;
+		pixel_cell[i][j] = 0;
+	}
+}
+	
+for(var i=0;i<800/cell_width;i++)
+{
+	for(var j=0;j<600/cell_width;j++)
+	{
+		pixel_cell[i][j] = new temp_design(i*800/cell_width+j,"fox.jpg",j*cell_width,i*cell_width,0,cell_width,cell_width);
+		elements.push(pixel_cell[i][j]);
+	}
+}
+
+var timer = setInterval(re_draw,50);
+var tempX;
+var tempY;
+
+//document.addEventListener("click",m_click,false);
+document.addEventListener("mousemove",m_move,false);
+document.addEventListener("keydown",one_key_destory,false);
+
+$(canvas_element).on('click', function(e) { 
+
+	var mouse= { 
+        x: e.pageX - canvas_element.offsetLeft, 
+        y: e.pageY - canvas_element.offsetTop
+	} 
+         
+    //fire off synthetic event containing mouse coordinate info 
+    $(canvas_element).trigger('handleClick', [mouse]);
+ });
+
+function re_draw()
+{
+	grid_related();
+	div_test.innerHTML = tempX+ "," +tempY + "," + grid_flag;
+	
+	ctx.fillStyle = "#000000";
+	
+	elements.forEach(function(element) {
+		if(element.draw_flag)
+		{
+			ctx.fillRect(element.left, element.top,cell_width,cell_width);
+		}
+	});
+}
+
+
+function m_click(e)
+{
+	//暫時廢棄掉
+}
+
+function m_move(e)
+{
+ tempX = e.pageX- canvas_element.offsetLeft;
+ tempY = e.pageY- canvas_element.offsetTop;
+}
+
+function grid_related()
+{
+	if(grid_flag)
+	{
+		if(!fill_flag)
+		{
+		 ctx.fillStyle = "white";
+		 ctx.fillRect(0,0,800,600);
+		
+		for(var i=0;i<800/cell_width;i++)
+		{
+			for(var j=0;j<600/cell_width;j++)
+			{
+				//ctx.fillStyle = "green";
+				ctx.strokeStyle = "#009900";
+				//糗大了,畫線用的是不同的屬性來著色的
+        
+				ctx.moveTo(i*cell_width,j*cell_width);
+				ctx.lineTo((i+1)*cell_width,j*cell_width);
+				ctx.lineTo((i+1)*cell_width,(j+1)*cell_width);
+				ctx.lineTo(i*cell_width,(j+1)*cell_width);
+				ctx.stroke();
+				}
+			}
+		
+			fill_flag = true;
+		}
+	}
+	else
+	{
+		//後來發現這個關框線原寫法應該會有問題
+		//問題是在於,當圖畫有內容時
+		//很可能會因為關掉框線
+		//導致整個畫面的內容被清成空白
+		//因此先暫時解除 關閉格線功能
+		
+		/*
+		ctx.fillStyle = "white";
+		ctx.fillRect(0,0,800,600);
+		
+		fill_flag = false;
+		*/
+	}
+}
+
+function one_key_destory(e)
+{
+	if(e.keyCode == 71) //按下g或G鍵
+	{
+		grid_flag = !grid_flag;
+	}
+}
+</script>
+</body>
+</html>
