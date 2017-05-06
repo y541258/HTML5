@@ -1,0 +1,184 @@
+<!DOCTYPE>
+<meta charset="utf-8"> 
+<html>
+<head>
+</head>
+
+<body>
+
+<script src="jquery-1.11.1.js"></script>
+
+<canvas id="canvas" width="800" height="600" ></canvas>
+<div id="div_test"></div>
+<script>
+
+//根據上次修正錯誤,花了那麼久的時間
+//看樣子不管是隔幾個月回來寫程式
+//還是盡量先把用到的變數、物件、初始化初值一類的
+//去年跟前年的習慣比較好
+//寫在最前面
+//畢竟絕大多數的語言都是循序執行
+//若不寫在最前面(在不出錯的情況下盡可能寫在最前面)
+//極度容易出錯
+
+//這邊先列下
+//1.用打字的方式─填pixel(其實在我的程式中,應該是說一格的)顏色
+//2.用說話的方式(沒那麼玄啦,可能是音量的方式)─照樣是填pixel顏色
+//3.透過畫筆或者是輸入內容之類的,改變填色
+//4.用文字檔的方式,產生出準確的pixel圖檔
+//我猜我會優先用webRTC
+
+var canvas_element = document.getElementById("canvas");
+var ctx=canvas_element.getContext("2d");
+ctx.fillStyle="#FFFFFF";
+ctx.fillRect(0, 0, 800, 600);
+
+var grid_flag = true;
+var fill_flag = false;
+var cell_width = 40;
+
+function temp_design(id,img,left,top,zIndex,width,height)
+{
+	this.id=id;
+	this.image = img;
+	//this.image = new Image();
+	//this.image.src=img;
+	
+	var self=this;
+	
+	//this.image.onload = function(){self.draw_flag=true;}
+	//↑此行廢棄
+	this.left= left;
+	this.top= top;
+	this.zIndex = zIndex; 
+	this.width=width;
+	this.height=height;
+	this.draw_flag = false;
+	
+	$(canvas_element).on('handleClick', function(e, mouse) { 
+
+        if (self.left < mouse.x && 
+            self.left + self.width > mouse.x && 
+            self.top < mouse.y && 
+            self.top + self.height > mouse.y) { 
+			
+			//disappear(self);
+			//↑假若要呼叫別的函數來處理的話
+			//就用這方式吧
+			self.draw_flag = true;
+        } 
+    });
+}
+
+var elements = [];
+var pixel_cell = [];
+	
+var pixel_page_content = [];
+
+for(var i=0;i<800/cell_width;i++)
+{
+	pixel_page_content[i] = [];
+	pixel_cell[i] = [];
+
+	for(var j=0;j<600/cell_width;j++)
+	{
+		pixel_page_content[i][j] = 0;
+		pixel_cell[i][j] = 0;
+	}
+}
+	
+for(var i=0;i<600/cell_width;i++)
+{
+	for(var j=0;j<800/cell_width;j++)
+	{
+		pixel_cell[i][j] = new temp_design(i*600/cell_width+j,"fox.jpg",j*cell_width,i*cell_width,0,cell_width,cell_width);
+		elements.push(pixel_cell[i][j]);
+	}
+}
+
+var timer = setInterval(re_draw,50);
+var tempX;
+var tempY;
+
+document.addEventListener("keydown",one_key_destory,false);
+
+$(canvas_element).on('click', function(e) { 
+
+	var mouse= { 
+        x: e.pageX - canvas_element.offsetLeft, 
+        y: e.pageY - canvas_element.offsetTop
+	} 
+         
+    $(canvas_element).trigger('handleClick', [mouse]);
+ });
+
+function re_draw()
+{
+	grid_related();
+	div_test.innerHTML = tempX+ "," +tempY + "," + grid_flag;
+	
+	ctx.fillStyle = "#000000";
+	
+	elements.forEach(function(element) {
+		if(element.draw_flag)
+		{
+			ctx.fillRect(element.left, element.top,cell_width,cell_width);
+		}
+	});
+}
+
+function grid_related()
+{
+	if(grid_flag)
+	{
+		if(!fill_flag)
+		{
+		 ctx.fillStyle = "white";
+		 ctx.fillRect(0,0,800,600);
+		
+		for(var i=0;i<800/cell_width;i++)
+		{
+			for(var j=0;j<600/cell_width;j++)
+			{
+				//ctx.fillStyle = "green";
+				ctx.strokeStyle = "#009900";
+				//糗大了,畫線用的是不同的屬性來著色的
+        
+				ctx.moveTo(i*cell_width,j*cell_width);
+				ctx.lineTo((i+1)*cell_width,j*cell_width);
+				ctx.lineTo((i+1)*cell_width,(j+1)*cell_width);
+				ctx.lineTo(i*cell_width,(j+1)*cell_width);
+				ctx.stroke();
+				}
+			}
+		
+			fill_flag = true;
+		}
+	}
+	else
+	{
+		//後來發現這個關框線原寫法應該會有問題
+		//問題是在於,當圖畫有內容時
+		//很可能會因為關掉框線
+		//導致整個畫面的內容被清成空白
+		//因此先暫時解除 關閉格線功能
+		
+		/*
+		ctx.fillStyle = "white";
+		ctx.fillRect(0,0,800,600);
+		
+		fill_flag = false;
+		*/
+	}
+}
+
+function one_key_destory(e)
+{
+	if(e.keyCode == 71) //按下g或G鍵
+	{
+		grid_flag = !grid_flag;
+	}
+}
+</script>
+</body>
+</html>
