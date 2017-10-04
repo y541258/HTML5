@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+簡易文字型RPG示範
+</head>
+遊戲程式進展
+
+<body>
+<div id="div_test"><div>
+
+<script>
+document.getElementById("div_test").innerHTML += "那就RPG(角色扮演遊戲)片段吧"
+document.getElementById("div_test").innerHTML += "能編寫這段程式"
+document.getElementById("div_test").innerHTML += "十分感謝http://www.wibibi.com/info.php?tid=400"
+document.getElementById("div_test").innerHTML += "不然文字更改部分真的忘了:"
+document.getElementById("div_test").innerHTML += "如果看不懂等下內容"
+document.getElementById("div_test").innerHTML += "請補看巴哈姆特上的 結構化程式 入門"
+
+function randomname()
+{
+    var v_name=Math.random()*(90-65)+65
+    if(Math.random()>0.5)
+    {
+         v_name += Math.random()*(90-65)+65
+    }
+}
+
+document.getElementById("div_test").innerHTML += "謎:這裡是異世界,請問你的名字是?"
+document.getElementById("div_test").innerHTML += "(其實這裡有些輸入是會有問題的,不過~)"
+
+if(v_name!=null)
+{document.getElementById("div_test").innerHTML += v_name+"你好,現在進入教學關卡,敵人是...反正是不能吃的"}
+var playername=v_name}
+else if(document.getElementById("StringTextBox").value)
+{document.getElementById("div_test").innerHTML += document.getElementById("NewStringBox").innerHTML+"你好,現在進入教學關卡,敵人是...反正是不能吃的"
+var playername=document.getElementById("StringTextBox").innerHTML}
+
+
+document.getElementById("div_test").innerHTML += "不能吃的敵人 30/30"
+document.getElementById("div_test").innerHTML += player_name + " 30/30"
+document.getElementById("div_test").innerHTML += "輸入0可以治療自己,而0任何數字都可觸發必殺技"
+document.getElementById("div_test").innerHTML += "祝好運"
+
+document.getElementById("div_test").innerHTML += "預防勝於治療"
+document.getElementById("div_test").innerHTML += "有這樣的必殺技似乎能贏,贏了"
+</script>
+<input type="button" value="隨機" onclick=randomname()>
+<input type="text" id="StringTextBox">
+</body>
