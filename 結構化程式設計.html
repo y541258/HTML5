@@ -1,0 +1,37 @@
+<!DOCTYPE>
+
+<html>
+
+<head>
+
+
+
+</head>
+
+<body>
+
+
+
+<div id="div_test"><div>
+
+
+
+<script>
+
+document.getElementById("div_test").innerHTML += "程式由上到下執行<br>"
+
+document.getElementById("div_test").innerHTML += "程式有選擇不執行某一段的自由<br>"
+
+if(Math.random() > 0.5) {document.getElementById("div_test").innerHTML += "被選擇了<br>"}
+
+document.getElementById("div_test").innerHTML += "程式可以反覆的執行某一段<br>"
+
+for(var i=0;i<5;i++)
+
+{document.getElementById("div_test").innerHTML += "不重要的事情說五次<br>"}
+
+</script>
+
+</body>
+
+</html>
