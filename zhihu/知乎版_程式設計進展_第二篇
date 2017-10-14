@@ -44,13 +44,14 @@ if(Math.random() > 0.5)
 else
 {
 	for(var h=0;h<8;h++)
-    {
-        for(var k=0x4DC0;k<0x4E00;k++)
+        {
+            for(var k=0x4DC0+h*8;k<0x4DC0+h*8+8;k++)
 	    {
-            document.getElementById("div_test").innerHTML+= getUnicodeCharacter(k);
-        }
-		document.getElementById("div_test").innerHTML+="<br>"
-		//↑每印八個六十四卦,就換行一次
+                document.getElementById("div_test").innerHTML+= getUnicodeCharacter(k);
+            }
+            
+	    document.getElementById("div_test").innerHTML+="<br>"
+	    //↑每印八個六十四卦,就換行一次
 	}
 }
 </script>
