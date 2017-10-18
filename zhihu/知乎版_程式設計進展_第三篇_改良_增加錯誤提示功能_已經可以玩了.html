@@ -148,6 +148,9 @@ function player_keyin(e)
 		//留待第四題來填
 	}
 	
+	//注意,↑個if跟↓個if是兩段不同的if,其實上面的我比較想用switch-case語法
+    //但考量到非本篇重點就先用if草草帶過,這段甚至不該寫出來
+	
 	if(e.keyCode >= 48 && e.keyCode <= 57)
     {
 		if(keyin_contain==0)
@@ -168,7 +171,7 @@ function player_keyin(e)
 		else
 		{
 			prompt_flag=true;
-			document.getElementById("div_alert").innerHTML+= "輸入錯誤,請再嘗試<br>";
+			document.getElementById("div_alert").innerHTML+= "<br>卦的順序不對,請再嘗試<br>";
             keyin_contain = 0;
 		}
 
@@ -198,7 +201,7 @@ function player_keyin(e)
 		else
 		{
 			prompt_flag=true;
-			document.getElementById("div_alert").innerHTML+= "輸入錯誤,請再嘗試<br>";
+			document.getElementById("div_alert").innerHTML+= "<br>卦的順序不對,請再嘗試<br>";
             keyin_contain = 0;
 		}
 
@@ -210,7 +213,7 @@ function player_keyin(e)
 	}
 	else
 	{
-		document.getElementById("div_alert").innerHTML+= "輸入錯誤,請再嘗試<br>";
+		document.getElementById("div_alert").innerHTML+= "你輸入的不是數字,請重新再來<br>";
 	}
 }
 
