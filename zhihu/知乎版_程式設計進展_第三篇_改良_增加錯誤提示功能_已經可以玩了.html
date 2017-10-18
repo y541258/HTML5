@@ -115,7 +115,11 @@ var test_random_hexgram=0;
 //document.getElementById("div_test").innerHTML= hexgram[test_random_hexgram];
 
 test_random_hexgram = parseInt(Math.random()*64);
-document.getElementById("div_test").innerHTML+= getUnicodeCharacter(test_random_hexgram+0x4DC0)+hexgram[test_random_hexgram];
+//document.getElementById("div_test").innerHTML+= getUnicodeCharacter(test_random_hexgram+0x4DC0)+hexgram[test_random_hexgram];
+document.getElementById("div_test").innerHTML+= "請問<br>" +
+getUnicodeCharacter(test_random_hexgram+0x4DC0) +
+hexgram[test_random_hexgram]+
+"<br>為第幾卦?<br>請輸入數字<br>";
 //鍵盤控制篇
 //↓這句話的意思是 鍵盤按下後,我們要做什麼,請看函式player_keyin
 document.addEventListener("keydown",player_keyin,false);
