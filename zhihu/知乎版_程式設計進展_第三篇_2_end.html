@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<meta charset="UTF-16"/>
+</head>
+<body>
+
+<div id="div_test"></div>
+<div id="div_alert"></div>
+
+<script>
+//搜尋引擎關鍵字,div font
+//然後就找到
+//https://www.sitepoint.com/community/t/div-class-font-size-and-positioning-question/7797
+//(↑上述這註解代表我抄襲或者說借鑒的程式碼來源,個人偏好是說抄襲)
+document.getElementById("div_test").align= "middle";
+document.getElementById("div_test").style= "color:green;font-size:60px";
+//加在<script>中,前段也就是在印出六十四卦前應該可以看出些差異
+//style裡面放的是CSS語法,以後有用到再慢慢談
+document.getElementById("div_alert").align= "middle";
+document.getElementById("div_alert").style= "color:red;font-size:60px";
+
+var hexgram=[];
+hexgram[0]="乾為天";
+hexgram[1]="坤為地";
+hexgram[2]="水山屯";
+hexgram[3]="山水蒙";
+hexgram[4]="水天需";
+hexgram[5]="天水訟";
+hexgram[6]="地水師";
+hexgram[7]="水地比";
+hexgram[8]="風天小畜";
+hexgram[9]="天澤履";
+hexgram[10]="地天泰";
+hexgram[11]="天地否";
+hexgram[12]="天火同人";
+hexgram[13]="火天大有";
+hexgram[14]="地山謙";
+hexgram[15]="雷地豫";
+hexgram[16]="澤雷隨";
+hexgram[17]="山風蠱";
+hexgram[18]="地澤臨";
+hexgram[19]="風地觀";
+hexgram[20]="火雷噬嗑";
+hexgram[21]="山火賁";
+hexgram[22]="山地剝";
+hexgram[23]="地雷復";
+hexgram[24]="天雷无妄";
+hexgram[25]="山天大畜";
+hexgram[26]="山雷頤";
+hexgram[27]="澤風大過";
+hexgram[28]="坎為水";
+hexgram[29]="離為火";
+hexgram[30]="澤山咸";
+hexgram[31]="雷風恆";
+hexgram[32]="天山遯";
+hexgram[33]="雷天大壯";
+hexgram[34]="火地晉";
+hexgram[35]="地火明夷";
+hexgram[36]="風火家人";
+hexgram[37]="火澤睽";
+hexgram[38]="水山蹇";
+hexgram[39]="雷水解";
+hexgram[40]="山澤損";
+hexgram[41]="風雷益";
+hexgram[42]="澤天夬";
+hexgram[43]="天風姤";
+hexgram[44]="澤地萃";
+hexgram[45]="地風升";
+hexgram[46]="澤水困";
+hexgram[47]="水風井";
+hexgram[48]="澤火革";
+hexgram[49]="火風鼎";
+hexgram[50]="震為雷";
+hexgram[51]="艮為山";
+hexgram[52]="風山漸";
+hexgram[53]="雷澤歸妹";
+hexgram[54]="雷火豐";
+hexgram[55]="火山旅";
+hexgram[56]="巽為風";
+hexgram[57]="兌為澤";
+hexgram[58]="風水渙";
+hexgram[59]="水澤節";
+hexgram[60]="風澤中孚";
+hexgram[61]="雷山小過";
+hexgram[62]="水火既濟";
+hexgram[63]="火水未濟";
+
+function getUnicodeCharacter(cp) {
+
+    if (cp >= 0 && cp <= 0xD7FF || cp >= 0xE000 && cp <= 0xFFFF) {
+        return String.fromCharCode(cp);
+    } else if (cp >= 0x10000 && cp <= 0x10FFFF) {
+
+        // we substract 0x10000 from cp to get a 20-bits number
+        // in the range 0..0xFFFF
+        cp -= 0x10000;
+
+        // we add 0xD800 to the number formed by the first 10 bits
+        // to give the first byte
+        var first = ((0xffc00 & cp) >> 10) + 0xD800
+
+        // we add 0xDC00 to the number formed by the low 10 bits
+        // to give the second byte
+        var second = (0x3ff & cp) + 0xDC00;
+
+        return String.fromCharCode(first) + String.fromCharCode(second);
+    }
+}
+
+
+var test_random_hexgram=0;
+//測試用程式碼↓結果應為乾為天
+//document.getElementById("div_test").innerHTML= hexgram[test_random_hexgram];
+
+test_random_hexgram = parseInt(Math.random()*64);
+//document.getElementById("div_test").innerHTML+= getUnicodeCharacter(test_random_hexgram+0x4DC0)+hexgram[test_random_hexgram];
+document.getElementById("div_test").innerHTML+= "請問<br>" +
+getUnicodeCharacter(test_random_hexgram+0x4DC0) +
+hexgram[test_random_hexgram]+
+"<br>為第幾卦?<br>請輸入數字<br>你目前輸入的數字為:0";
+//鍵盤控制篇
+//↓這句話的意思是 鍵盤按下後,我們要做什麼,請看函式player_keyin
+document.addEventListener("keydown",player_keyin,false);
+//現在我們可以對鍵盤進行較深入的控制了
+//我們要再次想使用者會怎麼輸入,這次要想得清楚些~
+//↓用來存使用者要輸入些什麼
+var keyin_contain=0;
+var over_flag=false;
+//over_flag用來標明遊戲是否結束
+var prompt_flag=false;
+var error_counter=0;
+
+function player_keyin(e)
+{
+	document.getElementById("div_alert").innerHTML= "";
+	
+	if(prompt_flag)
+	{
+		document.getElementById("div_alert").innerHTML= "提示:"+ getUnicodeCharacter(0x4DC0+test_random_hexgram)+hexgram[test_random_hexgram]  +"卦距離䷀乾為天" +String(test_random_hexgram);
+		
+		if(error_counter>1)
+		{
+		    document.getElementById("div_alert").innerHTML= "提示:"+ getUnicodeCharacter(0x4DC0+test_random_hexgram)+hexgram[test_random_hexgram]+"就是第"+ String(test_random_hexgram+1)+"卦";
+		}
+	}
+
+	console.log(e.keyCode);
+	console.log(keyin_contain);
+	
+    if(e.keyCode == 76 || e.keyCode == 85)
+	{
+		//留待第四題來填
+	}
+	
+	//注意,↑個if跟↓個if是兩段不同的if,其實上面的我比較想用switch-case語法
+    //但考量到非本篇重點就先用if草草帶過,這段甚至不該寫出來
+	
+	if(e.keyCode >= 48 && e.keyCode <= 57)
+    {
+		if(keyin_contain==0)
+		{
+			keyin_contain += e.keyCode - 48;
+		}
+		else if(keyin_contain < 10)
+		{
+			if(e.keyCode==48)
+			{
+				keyin_contain *= 10;
+			}	
+			else
+			{
+				keyin_contain = keyin_contain*10+(e.keyCode-48);
+			}
+			
+			check_hexgram();
+		}
+		else
+		{
+			prompt_flag=true;
+			document.getElementById("div_alert").innerHTML+= "<br>卦的順序不對,請再嘗試<br>";
+            keyin_contain = 0;
+		}
+
+		if(keyin_contain == test_random_hexgram+1)
+        {
+			over_flag=true;
+			document.removeEventListener("keydown",player_keyin,false);
+		}
+	}
+	else if(e.keyCode >= 96 && e.keyCode <= 105)
+	{
+		if(keyin_contain==0)
+		{
+			keyin_contain += e.keyCode - 96;
+		}
+		else if(keyin_contain < 10)
+		{
+			if(e.keyCode==96)
+			{
+				keyin_contain *= 10;
+			}	
+			else
+			{
+				keyin_contain = keyin_contain*10+(e.keyCode-96);
+			}
+			
+			check_hexgram();
+		}
+		else
+		{
+			prompt_flag=true;
+			document.getElementById("div_alert").innerHTML+= "<br>卦的順序不對,請再嘗試<br>";
+            keyin_contain = 0;
+		}
+
+		if(keyin_contain == test_random_hexgram+1)
+        {
+			over_flag=true;
+			document.removeEventListener("keydown",player_keyin,false);
+		}
+	}
+	else
+	{
+		document.getElementById("div_alert").innerHTML+= "你輸入的不是數字,請重新再來<br>";
+	}
+	
+	document.getElementById("div_test").innerHTML= "請問<br>" +
+    getUnicodeCharacter(test_random_hexgram+0x4DC0) +
+    hexgram[test_random_hexgram]+
+    "<br>為第幾卦?<br>請輸入數字<br>你目前輸入的數字為:"+String(keyin_contain)+"<br>";
+}
+
+function check_hexgram()
+{
+    if(keyin_contain != test_random_hexgram+1)
+	{
+		document.getElementById("div_alert").innerHTML+= "<br>卦的順序不對,請再嘗試<br>";
+	}
+	
+	prompt_flag=true;
+	error_counter++;
+	//上行等同error_counter+=1;
+}
+
+//接著是進行計時,看自己背多快?
+
+var time_count=0;
+
+var clock_off = setInterval(check_over,100);
+
+function check_over()
+{
+	if(over_flag)
+	{
+		document.getElementById("div_test").innerHTML+= "<br>共耗時"+String(time_count)+"秒";
+		clearInterval(clock_off);
+	}
+	else
+	{
+		time_count+=0.1;
+	}
+}
+</script>
+</body>
+</html>
