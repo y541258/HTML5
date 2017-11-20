@@ -1,0 +1,48 @@
+<!DOCTYPE>
+
+<html>
+
+<head>
+
+
+
+</head>
+
+<body>
+
+
+
+<div id="div_test"><div>
+
+
+
+<script>
+var player_array=[];
+var event_array=[];
+var hide_array=[];//hide有隱藏的意思
+
+player_array=[1,7,17,47];
+event_array = ["暴雨","忘記帶鑰匙","網路故障"];
+var sum=0;
+
+for(i=0;i<player_array.length;i++)
+{
+  sum+=player_array[i];
+}
+
+for(i=event_array.length;i>1;i--)
+{
+  if(sum% i == 0)
+ {
+    alert("事件" + event_array[i-1] + "只缺符合條件就能觸發了");
+    //要是選到都正好不符合觸發條件
+    //那天或時段或某個動作後就是沒異常的日子
+ }
+}
+
+alert("事件 " + event_array[0] + " 只缺符合條件就能觸發了");
+</script>
+
+</body>
+
+</html>
