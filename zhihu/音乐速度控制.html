@@ -1,0 +1,41 @@
+<!DOCTYPE html> 
+
+<meta charset="UTF-16"/>
+
+<html> 
+<body> 
+
+<button onclick="setPlaySpeed_helf()" type="button">半速</button>
+<button onclick="setPlaySpeed_normal()" type="button">正常速度</button>
+<button onclick="setPlaySpeed_normal_half()" type="button">1.5倍速</button>
+<button onclick="setPlaySpeed_double()" type="button">2倍速</button>
+<br>
+
+<audio id=myAudio src="ここにしか咲かない花.wav">
+</audio>
+
+<script>
+//audio的標籤處,src要放自己同個目錄底下的音樂檔
+var audio = document.getElementById("myAudio");
+
+audio.play();
+
+function setPlaySpeed_helf() { 
+    audio.playbackRate=0.5;
+} 
+
+function setPlaySpeed_normal() { 
+    audio.playbackRate = 1;
+} 
+
+function setPlaySpeed_normal_half() {
+	audio.playbackRate=1.5;
+}
+
+function setPlaySpeed_double() {
+	audio.playbackRate=2;
+}
+</script> 
+
+</body> 
+</html>
