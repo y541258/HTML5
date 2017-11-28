@@ -1,0 +1,463 @@
+<!DOCTYPE>
+<meta charset="utf-8"> 
+<html>
+<head>
+</head>
+
+<script src="jquery-1.11.1.js">
+//導入jQuery函式庫,主要是為了引入劇情文字檔用
+//用on函式時也要用到jQuery
+</script>
+
+<script>
+
+//修改自stack overflow上的回答
+//http://stackoverflow.com/questions/9880279/how-do-i-add-a-simple-onclick-event-handler-to-a-canvas-element
+//與修改自IBM網站上寫網頁的滑鼠與鍵盤文章參考
+//https://www.ibm.com/developerworks/cn/web/wa-games/
+
+//怎麼偵測右鍵?
+//http://stackoverflow.com/questions/4235426/how-can-i-capture-the-right-click-event-in-javascript
+//圓形與矩形碰撞
+//http://stackoverflow.com/questions/21089959/detecting-collision-of-rectangle-with-circle
+
+/*
+滑鼠點擊消除移動物件(仿闇箏)之網頁小遊戲實作文件
+
+需要些什麼?
+1.直落敵人、橫走敵人(+bomb)、友軍圖
+(消除敵人,但不能擊中友軍超過三次)
+2.鼠標圖、bomb範圍圖、背景圖(可省)
+3.殘彈數、bomb量顯示與補充彈藥區塊
+4.目前階段(類似關卡進度圖,可省)
+5.分數影響(原作中是解鎖圖片)
+
+大概就這樣,忘記有沒有再次遊玩功能了
+還是game over後回小遊戲選單
+
+簡單來說就是:
+至少要有四物件(三個會動一個固定)
+直落敵人、橫走敵人、友軍、補充彈藥區塊
+(因為四者被點的反應不同)
+*/
+var canvas_element = document.createElement("canvas");
+canvas_element.setAttribute("height",window.innerHeight);
+canvas_element.setAttribute("width",window.innerWidth);
+canvas_element.style="display:block; position:absolute; top:0px; left:0px;";
+document.documentElement.appendChild(canvas_element);
+
+var ctx = canvas_element.getContext("2d");
+ 
+//注意this的指向目標變化問題
+ 
+//現在要想辦法動態產生v_enemy物件
+//假設第一波敵人有10個
+//希望能用宣告10次v_enemy以外的方法
+ 
+function v_enemy(id,img,left,top,zIndex,width,height)
+{
+	this.id=id;
+	this.image = new Image();
+	this.image.src=img;
+	
+	var self=this;
+	
+	this.image.onload = function(){self.draw_flag=true;}
+	this.left= left;
+	this.top= top;
+	this.zIndex = zIndex; 
+	this.width=width;
+	this.height=height;
+	this.draw_flag = false;
+	
+	$(canvas_element).on('handleClick', function(e, mouse) { 
+
+        if (self.left < mouse.x && 
+            self.left + self.width > mouse.x && 
+            self.top < mouse.y && 
+            self.top + self.height > mouse.y) { 
+			
+			disappear(self);
+        } 
+    });
+	
+	$(canvas_element).on('rightClick', function(e, mouse) { 
+		//這樣寫好像怪怪的
+		//圖檔的一部分,碰到圓形炸彈範圍就會消失
+		//所以可能不是用isPointInPath
+		
+		//要用矩形與圓形碰撞
+		//公式還要再想陣子,先用現成的
+		//測試應該沒問題
+		//不過opera瀏覽器的右鍵功能特別討厭
+		//似乎有時會因此失效
+		
+		collision_detect(mouse,self);
+    });
+}
+
+v_enemy.prototype.move=function() {
+	if(this.top <= canvas_element.height)
+	{
+		this.top += 10;
+	}
+	else
+	{
+		this.top = -10;
+	}
+	
+	if(Math.random()<0.4)
+	{
+		if(this.left > 10)
+		{
+			this.left -= 10;
+		}
+	}
+	else if(Math.random()<0.8)
+	{
+		if(this.left < canvas_element.width-10)
+		{
+			this.left += 10;
+		}
+	}
+	
+}
+
+function h_enemy(id,img,left,top,zIndex,width,height)
+{
+	this.id=id;
+	this.image = new Image();
+	this.image.src=img;
+	
+	var self=this;
+	
+	this.image.onload = function(){self.draw_flag=true;}
+	this.left= left;
+	this.top= top;
+	this.zIndex = zIndex; 
+	this.width=width;
+	this.height=height;
+	this.draw_flag = false;
+	
+	$(canvas_element).on('handleClick', function(e, mouse) { 
+
+        if (self.left < mouse.x && 
+            self.left + self.width > mouse.x && 
+            self.top < mouse.y && 
+            self.top + self.height > mouse.y) { 
+
+            alert(self.id + "水平敵人受擊");
+			disappear(self);
+        } 
+    });
+	
+	$(canvas_element).on('rightClick', function(e, mouse) { 
+		collision_detect(mouse,self);
+    });
+}
+
+h_enemy.prototype.move=function() {
+	if(this.left >= 0)
+	{
+		this.left -= 10;
+	}
+	else
+	{
+		this.left = canvas_element.width - 10;
+	}
+}
+
+function friend(id,img,left,top,zIndex,width,height)
+{
+	this.id=id;
+	this.image = new Image();
+	this.image.src=img;
+	
+	var self=this;
+	
+	this.image.onload = function(){self.draw_flag=true;}
+	this.left= left;
+	this.top= top;
+	this.zIndex = zIndex; 
+	this.width=width;
+	this.height=height;
+	this.draw_flag = false;
+	
+	$(canvas_element).on('handleClick', function(e, mouse) { 
+
+        if (self.left < mouse.x && 
+            self.left + self.width > mouse.x && 
+            self.top < mouse.y && 
+            self.top + self.height > mouse.y) { 
+
+            alert(self.id + "友軍受擊");
+			disappear(self);
+        } 
+    });
+	
+	$(canvas_element).on('rightClick', function(e, mouse) { 
+		collision_detect(mouse,self);
+    });
+}
+
+friend.prototype.move=function() {
+	if(this.top <= canvas_element.height)
+	{
+		this.top += 10;
+	}
+	else
+	{
+		this.top = -10;
+	}
+	
+	if(Math.random()<0.4)
+	{
+		if(this.left > 10)
+		{
+			this.left -= 10;
+		}
+	}
+	else if(Math.random()<0.8)
+	{
+		if(this.left < canvas_element.width-10)
+		{
+			this.left += 10;
+		}
+	}
+}
+
+function full_bullet(id,img,left,top,zIndex,width,height)
+{
+	this.id=id;
+	this.image = new Image();
+	this.image.src=img;
+	
+	var self=this;
+	
+	this.image.onload = function(){self.draw_flag=true;}
+	this.left= left;
+	this.top= top;
+	this.zIndex = zIndex; 
+	this.width=width;
+	this.height=height;
+	this.draw_flag = false;
+	
+	$(canvas_element).on('handleClick', function(e, mouse) { 
+
+        if (self.left < mouse.x && 
+            self.left + self.width > mouse.x && 
+            self.top < mouse.y && 
+            self.top + self.height > mouse.y) { 
+
+            alert("補充彈藥區塊");
+
+        } 
+    });
+}
+
+full_bullet.prototype.move=function() {
+	//不需移動,但不寫這段的話
+	//以目前程式寫法,在foreach (function(){...move()}那會有編譯錯誤
+}
+
+
+
+function disappear(self)
+{
+	for(var i=0;i<elements.length;i++)
+	{
+		if(elements[i].id == self.id)
+		{
+			//注意屬性要清空
+			//避免點擊的碰撞偵測持續生效
+			self.left=null;
+			self.top=null;
+			self.width=null;
+			self.height=null;
+				
+			elements[i]=null;
+			elements.splice(i, 1);
+		}
+	}
+}
+
+var test_1 = new v_enemy("第1個","tile.png",0,0,3,200,120);
+var test_2 = new h_enemy("第2個","hp0_ball.png",400,200,2,200,120);
+var test_3 = new friend("第3個","hp_ball.png",100,300,2,200,120);
+var test_4 = new full_bullet("補充","SRS-pieces.png",700,0,5,180,257);
+
+
+var elements = [];
+	
+// Add element.
+elements.push(test_1);
+elements.push(test_2);
+elements.push(test_3);
+elements.push(test_4);
+	
+var  test_rect = [];
+	
+for (var i = 0; i < 10; i++)
+{
+    //window["enemy_"+i] = new v_enemy(i,"tile.png",Math.random()*canvas_element.width,0,3,200,120);
+    test_rect["enemy_"+i] = new v_enemy(i,"tile.png",Math.random()*canvas_element.width,0,3,200,120);
+	//elements.push(window["enemy_"+i]);
+	elements.push(test_rect["enemy_"+i]);
+}
+	
+$(canvas_element).on('click', function(e) { 
+	var mouse= { 
+        x: e.pageX - canvas_element.offsetLeft, 
+        y: e.pageY - canvas_element.offsetTop
+	} 
+         
+    //fire off synthetic event containing mouse coordinate info 
+    $(canvas_element).trigger('handleClick', [mouse]);
+ });
+ 
+ $(canvas_element).on('contextmenu', function(e) { 
+	e.preventDefault();
+ 
+	var mouse= { 
+        x: e.pageX - canvas_element.offsetLeft, 
+        y: e.pageY - canvas_element.offsetTop
+	}
+         
+    //fire off synthetic event containing mouse coordinate info 
+    $(canvas_element).trigger('rightClick', [mouse]);
+	
+	return false;
+ });
+ 
+ canvas_element.addEventListener("mousemove",range_hint_move,false);
+ 
+var tempX,tempY;
+var bomb_range=150;
+ 
+function range_hint_move(e)
+{
+	tempX=e.pageX;
+	tempY=e.pageY;
+}
+
+function collision_detect(mouse,self)
+{
+	var distX = Math.abs(mouse.x - (self.left+self.width/2));
+	var distY = Math.abs(mouse.y - (self.top+self.height/2));
+
+	if (distX > (self.width/2 + bomb_range)) { return false; }
+	if (distY > (self.height/2 + bomb_range)) { return false; }
+
+	if (distX <= (self.width/2)) { disappear(self); } 
+	if (distY <= (self.height/2)) { disappear(self); }
+
+	var dx=distX-self.width/2;
+	var dy=distY-self.height/2;
+		
+	if (dx*dx+dy*dy <= bomb_range*bomb_range){
+		disappear(self);
+	}
+}
+
+var timer = setInterval(re_draw,50);
+
+// Render elements.
+function re_draw()
+{
+	//console.dir(elements);
+
+	//動態產生敵人、友軍的程式寫法參考
+	//elements.push(new v_enemy("第1個","tile.png",0,0,3,200,120));
+		
+	
+	ctx.fillStyle="#FFFFFF";
+	ctx.fillRect(0, 0,canvas_element.width , canvas_element.height);
+	
+	ctx.beginPath();
+	ctx.arc(tempX,tempY,bomb_range,0,2*Math.PI);
+	ctx.stroke();
+	
+	//現在要想辦法,同個物件(圖檔)有多種不同的落下形式
+	
+	//後來想了一下,其實不用像彈幕遊戲那麼麻煩
+	//彈幕遊戲通常是精心設計子彈
+	//讓玩家能用背板(把敵人出現順序、位置記下)的方式過關
+	//(隨機性太強的彈幕遊戲會讓人很挫折)
+	
+	//但這種落下移動物件滑鼠點擊削除遊戲
+	//更重視的是每次遊玩時略有不同
+	//因此想辦法在幾種路線隨機選擇
+	//或者是每次落下時隨機左右移動(可能要賦予權重才不會讓結果太怪)即可
+	
+	elements.forEach(function(element) {
+						//console.dir(elements);
+						element.move();
+	});
+
+	elements.forEach(function(element) {
+		if(element.draw_flag)
+		{
+			ctx.drawImage(element.image,element.left, element.top);
+		}
+	});
+}
+
+/*
+至此,仿闇箏之小遊戲雛型基本上完成
+接著是殘彈數設計,也就是點擊事件優先判斷是否有殘彈再繼續進行
+然後點擊碰撞偵測用多邊形(三角形近似)更加精準(若圖形要改得較不規則的話)
+
+橫向移動敵人要改成高速,只跑一次,然後被點擊或bomb時都會+bomb數
+分數也比較高
+縱向敵人掉落底部時,由目前的回到高處改成扣除玩家生命值
+基本上一個一分
+友軍被點擊或bomb誤傷時,也扣除玩家生命值
+
+剩下來目前想到的
+1.敵人要分批,時間點與實作細節還不太清楚
+
+時間點應該是隨機的
+起始時產生的敵人、友軍量較少,間隔長
+後面逐漸變多與間隔短
+
+目前是採取↓的動態批次(也就是一次性)生成方式
+
+for (var i = 0; i < 10; i++)
+{
+    window["enemy_"+i] = new v_enemy(i,"tile.png",Math.random()*canvas_element.width,0,3,200,120);
+	elements.push(window["enemy_"+i]);
+}
+
+所以感覺是先隨機(random)時間
+然後再調整隨機敵人的數量範圍就有機會達成
+詳細列式可能還要再想下
+Math.random()*(最大敵人數量-最小敵人數量)+最小敵人數量
+但最大敵人數量與最小敵人數量是時間的函數
+此外若導入一波敵人概念的話
+假設第一波敵人是8個
+隨機個數分別是4 3
+那最後一次就只能1了
+若是這情形的話(理論上來說每局的最高得分都應該是相同的)
+感覺要怎麼列式我暫時還沒想清楚
+
+2.bomb還不清楚原理,但就是清除一定範圍內的物件(這邊應該比較麻煩)
+應該是若有物件的top,left在範圍內就清空
+但實作細節還不太清楚,估計是用迴圈跟條件判斷達成吧
+
+bomb的範圍是一個路徑,然後用各物件的top,left來呼叫isPointInPath()函式
+
+3.日後考慮優化或者說特別處理直落物件的掉落路徑
+像是先快後慢,先慢後快,勻速等
+所以也許日後得多存個速度屬性
+
+這週末也許會新增此檔案的說明文章
+今天上課會特別晚
+也許沒足夠時間寫
+*/
+
+ 
+</script>
+
+<body>
+</body>
+</html>
