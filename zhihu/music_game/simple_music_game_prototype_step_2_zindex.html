@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<meta charset="utf-8"> 
+<html>
+<head></head>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+}
+</style>
+
+<script>
+var canvas_element;
+var image_count=2;
+
+canvas_element = document.createElement("canvas");
+canvas_element.setAttribute("width",600);
+canvas_element.setAttribute("height",480);
+canvas_element.style="display:block; position:absolute; top:10px; left:10px;";
+document.documentElement.appendChild(canvas_element);
+
+var ctx = canvas_element.getContext("2d");
+
+//var w=Math.random()*canvas_element.width;
+//var h=Math.random()*canvas_element.height;
+
+const FRAME_RATE = 60;
+var intervalTime = 1000/FRAME_RATE;
+//timer_id = setInterval(,intervalTime);
+//clearInterval(timer_id);
+
+function white_key(id,img,left,top,zIndex,width,height)
+{
+	this.id=id;
+	this.image = new Image();
+	this.image.src=img;
+	
+	var self=this;
+	
+	this.image.onload = function(){self.draw_flag=true;}
+	this.left= left;
+	this.top= top;
+	this.zIndex = zIndex; 
+	this.width=width;
+	this.height=height;
+	this.draw_flag = false;
+}
+
+function black_key(id,img,left,top,zIndex,width,height)
+{
+	this.id=id;
+	this.image = new Image();
+	this.image.src=img;
+	
+	var self=this;
+	
+	this.image.onload = function(){self.draw_flag=true;}
+	this.left= left;
+	this.top= top;
+	this.zIndex = zIndex; 
+	this.width=width;
+	this.height=height;
+	this.draw_flag = false;
+}
+
+document.onkeydown=function(e){
+  
+}
+
+var key_1 = new white_key("第1個","white_key.png",0,0,3,35,117);
+var key_3 = new white_key("第3個","white_key.png",35,0,3,35,117);
+var key_5 = new white_key("第5個","white_key.png",70,0,3,35,117);
+var key_6 = new white_key("第6個","white_key.png",105,0,3,35,117);
+var key_8 = new white_key("第8個","white_key.png",140,0,3,35,117);
+var key_10 = new white_key("第10個","white_key.png",175,0,3,35,117);
+var key_12 = new white_key("第12個","white_key.png",210,0,3,35,117);
+
+var key_2 = new black_key("第2個","black_key.png",20,0,2,25,93);
+var key_4 = new black_key("第4個","black_key.png",55,0,2,25,93);
+var key_7 = new black_key("第7個","black_key.png",125,0,2,25,93);
+var key_9 = new black_key("第9個","black_key.png",160,0,2,25,93);
+var key_11 = new black_key("第11個","black_key.png",195,0,2,25,93);
+
+var elements = [];
+
+elements.push(key_2);
+elements.push(key_4);
+elements.push(key_7);
+elements.push(key_9);
+elements.push(key_11);
+elements.push(key_1);
+elements.push(key_3);
+elements.push(key_5);
+elements.push(key_6);
+elements.push(key_8);
+elements.push(key_10);
+elements.push(key_12);
+
+var timer = setInterval(re_draw,50);
+
+	//12:50回來    雖然快要上工了
+	for(i=0;i<elements.length;i++)
+	for(j=0;j<i;j++)
+	{
+	{
+		if(elements[j].zIndex<elements[j+1].zIndex)
+		{
+			var temp = elements.zIndex;
+			var temp = elements.zIndex;
+			temp = elements[j];
+			elements[j] = elements[j+1];
+			elements[j+1] = temp;
+		}
+	}
+	}
+
+function re_draw()
+{	
+	ctx.fillStyle="#FFFFFF";
+	ctx.fillRect(0, 0,canvas_element.width , canvas_element.height);
+
+	console.log(elements);
+	
+	elements.forEach(function(element) {
+		if(element.draw_flag)
+		{
+			ctx.drawImage(element.image,element.left, element.top);
+		}
+	});
+}
+
+</script>
+
+<body>
+</body>
+</html>
