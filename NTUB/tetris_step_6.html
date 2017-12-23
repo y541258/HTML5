@@ -1,0 +1,901 @@
+<!DOCTYPE>
+<meta charset="utf-8"> 
+<html>
+<head>
+</head>
+
+<body>
+<canvas id="canvas" width="800" height="600" ></canvas>
+<script>
+
+var canvas_element = document.getElementById("canvas");
+var ctx=canvas_element.getContext("2d");
+ctx.fillStyle="#000000";
+ctx.fillRect(0, 0, 800, 600);
+
+var tetris_width = 10;
+var tetris_height = 22;
+
+
+var tile_width=30;
+var tile_height=25;
+var tile_center_left=(canvas_element.width/2)-((tile_width*tetris_width)/2);
+var tile_center_top=(canvas_element.height/2)-((tile_height*tetris_height)/2);
+
+//alert(tile_center_top);
+
+var board = [];
+var temp_tile=[];
+var tile_loop = [true,true,true,true,true,true,true];
+
+var current_column;
+var current_row;
+
+var collision_flag=false;
+
+var pre_status;
+//(旋轉失敗時使用,在目前第六步,因為碰撞機制還沒實作,可以暫且不理)
+var present_status=0; 
+//0是往上平放,1是順時針90度旋轉依此類推
+
+const rotation_0=0; //0轉向
+const rotation_R=1; //R轉向(右轉)
+const rotation_2=2; //2轉向(0轉向反轉)
+const rotation_L=3; //L轉向
+
+var pre_status=0;
+
+const NO_TILE=0;
+const I=1;
+const O=2;
+const T=3;
+const S=4;
+const Z=5;
+const J=6;
+const L=7;
+const FIXED=8;
+
+const left_arrow=37;
+const right_arrow=39;
+const down_arrow=40;
+const Z_key=90;
+const X_key=88;
+
+//初始化俄羅斯方塊版的二維陣列
+for(var i=0;i<tetris_height;i++)
+{
+	board[i] = [];
+	for(var j=0;j<tetris_width;j++)
+	{
+		board[i][j]=0;
+	}
+}
+
+
+//初始化正被取出的小俄羅斯方塊的二維陣列
+for(var i=0;i<4;i++)
+{
+	temp_tile[i] = [];
+	for(var j=0;j<4;j++)
+	{
+		temp_tile[i][j] = 0;
+	}
+}
+
+var down_timer = setInterval(timer, 300);
+document.addEventListener("keydown",keydown_related,false);
+create_tile();
+
+var air=0;
+
+function timer()
+{
+
+    air++;
+   
+    if(air%3 == 0)
+    {  
+		if(current_row >= tetris_height)
+		{
+			create_tile();	
+		}
+		else
+		{
+			current_row++;
+		}
+		//collision_related();
+        air=0;
+    }
+	re_draw();
+}
+
+/*function collision_related()
+{
+	for(var i=0;i<tetris_height;i++)
+	{
+		for(var j=0;j<tetris_width;j++)
+		{
+			if(FIXED != board[i][j])
+				board[i][j]=0;
+		}
+	}
+	
+	if(current_row+temp_tile_bottom >= tetris_height)  
+	{	
+		for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+		{
+			for(var j=current_column;j<=current_column+temp_tile_right;j++)
+			{
+				if(temp_tile[i-current_row][j-current_column] != 0 && temp_tile[i-current_row][j-current_column] != undefined)
+				{
+					board[i-1-(current_row+temp_tile_bottom-tetris_height)][j]+=10;	
+				}
+			}
+		}
+			
+		for(var t_i=0;t_i<tetris_height;t_i++)
+		{
+			for(var t_j=0;t_j<tetris_width;t_j++)
+			{
+				if(board[t_i][t_j]==18)   
+				{
+					collision_flag=true;
+				}
+			}
+		}
+		
+		if(collision_flag)	
+		{
+			for(var t_i=0;t_i<tetris_height;t_i++)
+			{					
+				for(var t_j=0;t_j<tetris_width;t_j++)
+				{
+					if(board[t_i][t_j]==10)
+					{
+						board[t_i-1][t_j]=8;
+						board[t_i][t_j]=0;
+					}
+					
+					if(board[t_i][t_j]==18)
+					{
+						board[t_i-1][t_j]=8;
+						board[t_i][t_j]=8;
+							
+						if(t_i ==2)	
+						{
+							game_over();
+							break;
+						}
+					}
+						
+				}
+			}
+			
+			collision_flag=false;
+			check_line();
+			create_tile();
+		}
+		else
+		{
+			//單純觸底
+			for(var t_i=0;t_i<tetris_height;t_i++)
+			{					
+				for(var t_j=0;t_j<tetris_width;t_j++)
+				{
+					if(board[t_i][t_j]==10)
+					{
+						board[t_i][t_j]=8;
+					}	
+				}
+			}
+		
+			check_line();
+			hold_flag=false;
+			create_tile();
+		}
+	}
+	else
+	{
+		for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+		{
+			for(var j=current_column;j<=current_column+temp_tile_right;j++)
+			{			
+
+				if(temp_tile[i-current_row][j-current_column] != 0 && temp_tile[i-current_row][j-current_column] != undefined)
+				{
+					board[i][j]+=10;
+				}
+			}
+		}
+	}
+	
+	for(var t_i=0;t_i<tetris_height;t_i++)
+	{
+		for(var t_j=0;t_j<tetris_width;t_j++)
+		{
+			if(board[t_i][t_j]==18)  //畫方塊前先+10,白色是8
+			{
+				collision_flag=true;
+			}
+		}
+	}
+			
+	if(collision_flag)
+	{
+		for(var t_i=0;t_i<tetris_height;t_i++)
+		{					
+			for(var t_j=0;t_j<tetris_width;t_j++)
+			{
+				if(board[t_i][t_j]==10)
+				{
+					board[t_i-1][t_j]=8;
+					board[t_i][t_j]=0;
+				}
+						
+				if(board[t_i][t_j]==18)
+				{
+					board[t_i-1][t_j]=8;
+					board[t_i][t_j]=8;
+				
+					if(t_i ==2)	
+					{
+						game_over();
+						break;
+					}
+				}
+			}
+		}
+				
+		collision_flag=false;
+		check_line();
+		hold_flag=false;
+		create_tile();
+	}
+}*/
+
+
+function re_draw(){
+	for(var i=0;i<tetris_height;i++)
+	{
+		for(var j=0;j<tetris_width;j++)
+		{
+			if(FIXED != board[i][j])
+				board[i][j]=0;
+		}
+	}
+
+	
+	for(var i=current_row;i<current_row+4;i++) //小方塊陣列大小為4
+	{
+		if(i>=22)
+		{
+			break;
+		}
+		
+		for(var j=current_column;j<current_column+4;j++)
+		{
+			if(j>=10)
+			{
+				break;
+			}
+			
+			board[i][j]=temp_tile[i-current_row][j-current_column];
+		}
+	}
+	
+	for(var t_i=0;t_i<tetris_height;t_i++)
+	{
+		for(var t_j=0;t_j<tetris_width;t_j++)
+		{
+			if(board[t_i][t_j]==10)
+			{
+				board[t_i][t_j]=present_tile;
+			}
+		}
+	}
+
+	for(var i=0;i<tetris_height;i++)
+	{
+		for(var j=0;j<tetris_width;j++)
+		{
+			switch(board[i][j])
+			{
+				case NO_TILE:
+					ctx.fillStyle="#333333";
+					break;
+				case I:	//直,青藍色
+					ctx.fillStyle="#00FFFF";
+					break;
+				case O: //正方形,黃色
+					ctx.fillStyle="#FFFF00";
+					break;
+				case T:	//卜,紫色
+					ctx.fillStyle="#800080";
+					break;
+				case S: //S,綠色
+					ctx.fillStyle="#00FF00";
+					break;
+				case Z: //Z,紅色
+					ctx.fillStyle="#FF0000";
+					break;
+				case J: //J,藍色
+					ctx.fillStyle="#0000FF";
+					break;
+				case L: //L,橘色
+					ctx.fillStyle="#FFA500";
+					break;
+				case FIXED: //固定,白色
+					ctx.fillStyle="#FFFFFF";
+					break;
+			}
+			
+			ctx.fillRect(tile_center_left+tile_width*j,tile_center_top+tile_height*i,tile_width,tile_height);
+		}
+	}
+}
+
+function tile_clear()
+{
+	for(var i=0;i<4;i++)
+	{
+		for(var j=0;j<4;j++)
+		{
+			temp_tile[i][j]=0;
+		}
+	}
+}
+
+//元祖版,create_tile()
+function create_tile()
+{
+	tile_clear();
+	
+	current_row=0;
+	current_column=3;
+	present_status=0;
+
+	sum=0;
+	loop_end_flag=false;
+
+	for(i=0;i<tile_loop.length;i++)
+	{
+		//如果七個都false loop_end_flag 為 true
+	
+		if(tile_loop[i])
+		{
+			sum++;
+		}
+		
+	}
+	
+	if(sum==0)
+	{
+		loop_end_flag=true;
+	}
+	
+	if(loop_end_flag)
+	{
+		for(i=0;i<tile_loop.length;i++)
+		{
+			tile_loop[i]=true;
+		}
+	}
+
+	while(true)
+	{
+		present_tile=parseInt(Math.random()*7+1);
+		
+		if(tile_loop[present_tile-1])
+		{
+			tile_loop[present_tile-1] = false;
+			break;
+		}
+	}
+	
+	switch(present_tile)
+	{
+				case I:	//直,青藍色
+					temp_tile[1][0]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					temp_tile[1][3]=present_tile;
+					break;
+				case O: //正方形,黃色
+					temp_tile[0][1]=present_tile;
+					temp_tile[0][2]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					break;
+				case T:	//卜,紫色
+					temp_tile[0][1]=present_tile;
+					temp_tile[1][0]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					break;
+				case S: //S,綠色
+					temp_tile[0][1]=present_tile;
+					temp_tile[0][2]=present_tile;
+					temp_tile[1][0]=present_tile;
+					temp_tile[1][1]=present_tile;
+					break;
+				case Z: //Z,紅色
+					temp_tile[0][0]=present_tile;
+					temp_tile[0][1]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					break;
+				case J: //J,藍色
+					temp_tile[0][0]=present_tile;
+					temp_tile[1][0]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					break;
+				case L: //L,橘色
+					temp_tile[0][2]=present_tile;
+					temp_tile[1][0]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					break;
+	}
+	
+	decide_bound();
+}
+
+//較新的create_tile()
+/*function create_tile()
+{
+	c_flag=false;
+	cc_flag=false;
+
+	current_row=0;
+	current_column=3;
+	present_status=0;
+	pre_status=0;
+
+	
+	tile_clear();
+	
+	if(current_order ==7)	//取出第八塊方塊時
+	{
+		decide_tile();
+		current_order=0;
+		present_tile=run_tile[0];
+		current_order++;
+	}
+	else
+	{
+		present_tile=run_tile[current_order];
+		current_order++;
+	}
+	
+	switch(present_tile)
+	{
+				case 1:	//直,青藍色
+					temp_tile[1][0]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					temp_tile[1][3]=present_tile;
+					break;
+				case 2: //正方形,黃色
+					temp_tile[0][1]=present_tile;
+					temp_tile[0][2]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					break;
+				case 3:	//卜,紫色
+					temp_tile[0][1]=present_tile;
+					temp_tile[1][0]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					break;
+				case 4: //S,綠色
+					temp_tile[0][1]=present_tile;
+					temp_tile[0][2]=present_tile;
+					temp_tile[1][0]=present_tile;
+					temp_tile[1][1]=present_tile;
+					break;
+				case 5: //Z,紅色
+					temp_tile[0][0]=present_tile;
+					temp_tile[0][1]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					break;
+				case 6: //J,藍色
+					temp_tile[0][0]=present_tile;
+					temp_tile[1][0]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					break;
+				case 7: //L,橘色
+					temp_tile[0][2]=present_tile;
+					temp_tile[1][0]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					break;
+				default:
+					
+	}
+}
+*/
+
+function keydown_related(e)
+{
+    //alert(e.keyCode);
+	
+    if(e.keyCode==left_arrow)  //按←
+	{
+        left_move();
+	}
+   
+    if(e.keyCode==right_arrow)    //按→
+	{
+        right_move();
+	}
+   
+    if(e.keyCode==Z_key)  //按Z鍵
+	{
+        rotate_counterclockwise();      
+	}
+  
+    if(e.keyCode==X_key)    //按X鍵
+	{
+        rotate_clockwise();
+	}
+ 
+    if(e.keyCode==down_arrow)    //按↓
+	{
+		//alert("按↓");
+        down();
+	}
+}
+
+function left_move()
+{	
+	//current_column值可能為負
+	
+	if(current_column+temp_tile_left>0)
+	{
+		current_column--;
+	}
+}
+
+function right_move()
+{	
+	if(current_column+temp_tile_right < 9)
+	{	
+		current_column++;
+	}
+}
+
+function decide_bound()
+{
+	temp_tile_top=3;
+	temp_tile_left=3;
+	temp_tile_right=0;
+	temp_tile_bottom=0;
+	
+	for(var i=0;i<4;i++)
+	{
+		for(var j=0;j<4;j++)
+		{
+			if(temp_tile[i][j] != 0)
+			{
+				if(j<temp_tile_left)
+				{
+					temp_tile_left = j;
+				}
+				
+				
+				if(j>temp_tile_right)
+				{
+					temp_tile_right = j;
+				}
+					
+				if(i>temp_tile_bottom)
+				{
+					temp_tile_bottom=i;
+				}
+				
+				if(i<temp_tile_top)
+				{
+					temp_tile_top=i;
+				}
+			}
+		}
+	}
+	
+	
+	//邊界踢牆或者說邊界內縮判斷
+	if(current_column+temp_tile_right-temp_tile_left > 9)
+	{
+		current_column = 9-temp_tile_right+temp_tile_left;
+	}
+	
+}
+
+function check_line()
+{
+	var sum=0;
+
+	for(var i=tetris_height-1;i>=0;i--)
+	{
+		sum=0;
+	
+		for(var j=0;j<tetris_width;j++)
+		{
+			sum += board[i][j];
+		}
+		
+		if(sum==80)	//固定後的白色格子是8,橫的10格
+		{
+		
+			for(var k=i;k>0;k--)
+			{
+				for(var j=0;j<tetris_width;j++)
+				{
+					board[k][j]=board[k-1][j];
+				}
+			}
+			
+			i++;
+			
+		}
+	}
+}
+
+function rotate_clockwise()
+{
+	if(present_status < rotation_L)
+	{
+		present_status += 1;
+	}
+	else
+	{
+		present_status = rotation_0;
+	}
+	
+	
+	tile_clear();
+	//要儲存旋轉後的小俄羅斯方塊陣列,因此先把之前的清空
+	rotate_detail();
+}
+
+function rotate_counterclockwise()
+{
+	if(present_status > 0)
+	{
+		present_status -= 1;
+	}
+	else
+	{
+		present_status = rotation_L;
+	}
+	
+	tile_clear();
+	rotate_detail();
+}
+
+function rotate_detail()
+{
+	//等下是兩層switch-case,雖然較不常見
+	//但本質上跟兩層if差不多啦!!就放心的用
+	switch(present_tile)
+	{
+		case I:	//直,青藍色
+			switch(present_status)
+			{
+				case rotation_0:
+					temp_tile[1][0]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					temp_tile[1][3]=present_tile;
+					break;
+				case rotation_R:
+					temp_tile[0][2]=present_tile;
+							temp_tile[1][2]=present_tile;
+							temp_tile[2][2]=present_tile;
+							temp_tile[3][2]=present_tile;
+					break;
+				case rotation_2:
+					temp_tile[2][0]=present_tile;
+							temp_tile[2][1]=present_tile;
+							temp_tile[2][2]=present_tile;
+							temp_tile[2][3]=present_tile;
+					break;
+				case rotation_L:
+					temp_tile[0][1]=present_tile;
+							temp_tile[1][1]=present_tile;
+							temp_tile[2][1]=present_tile;
+							temp_tile[3][1]=present_tile;
+					break;
+			}
+			break;
+		case O: //正方形,黃色
+			switch(present_status)
+			{
+				case rotation_0:
+					temp_tile[0][1]=present_tile;
+							temp_tile[0][2]=present_tile;
+							temp_tile[1][1]=present_tile;
+							temp_tile[1][2]=present_tile;
+					break;
+				case rotation_R:
+					temp_tile[0][1]=present_tile;
+							temp_tile[0][2]=present_tile;
+							temp_tile[1][1]=present_tile;
+							temp_tile[1][2]=present_tile;
+					break;
+				case rotation_2:
+					temp_tile[0][1]=present_tile;
+							temp_tile[0][2]=present_tile;
+							temp_tile[1][1]=present_tile;
+							temp_tile[1][2]=present_tile;
+					break;
+				case rotation_L:
+					temp_tile[0][1]=present_tile;
+							temp_tile[0][2]=present_tile;
+							temp_tile[1][1]=present_tile;
+							temp_tile[1][2]=present_tile;
+					break;
+			}
+			break;
+			
+		case T:	//卜,紫色
+			switch(present_status)
+			{
+				case rotation_0:
+					temp_tile[0][1]=present_tile;
+							temp_tile[1][0]=present_tile;
+							temp_tile[1][1]=present_tile;
+							temp_tile[1][2]=present_tile;
+					break;
+				case rotation_R:
+					temp_tile[1][2]=present_tile;
+							temp_tile[0][1]=present_tile;
+							temp_tile[1][1]=present_tile;
+							temp_tile[2][1]=present_tile;
+					break;
+				case rotation_2:
+					temp_tile[2][1]=present_tile;
+							temp_tile[1][0]=present_tile;
+							temp_tile[1][1]=present_tile;
+							temp_tile[1][2]=present_tile;
+					break;
+				case rotation_L:
+					temp_tile[1][0]=present_tile;
+							temp_tile[0][1]=present_tile;
+							temp_tile[1][1]=present_tile;
+							temp_tile[2][1]=present_tile;
+					break;
+			}
+			break;
+			
+		case S: //S,綠色
+			switch(present_status)
+			{
+				case rotation_0:
+					temp_tile[0][1]=present_tile;
+							temp_tile[0][2]=present_tile;
+							temp_tile[1][0]=present_tile;
+							temp_tile[1][1]=present_tile;
+					break;
+				case rotation_R:
+					temp_tile[0][1]=present_tile;
+							temp_tile[1][1]=present_tile;
+							temp_tile[1][2]=present_tile;
+							temp_tile[2][2]=present_tile;
+					break;
+				case rotation_2:
+					temp_tile[1][1]=present_tile;
+							temp_tile[1][2]=present_tile;
+							temp_tile[2][0]=present_tile;
+							temp_tile[2][1]=present_tile;
+					break;
+				case rotation_L:
+					temp_tile[0][0]=present_tile;
+							temp_tile[1][0]=present_tile;
+							temp_tile[1][1]=present_tile;
+							temp_tile[2][1]=present_tile;
+					break;
+			}
+			break;
+		case Z: //Z,紅色
+			switch(present_status)
+			{
+				case rotation_0:
+					temp_tile[0][0]=present_tile;
+							temp_tile[0][1]=present_tile;
+							temp_tile[1][1]=present_tile;
+							temp_tile[1][2]=present_tile;
+					break;
+				case rotation_R:
+					temp_tile[0][2]=present_tile;
+							temp_tile[1][1]=present_tile;
+							temp_tile[1][2]=present_tile;
+							temp_tile[2][1]=present_tile;
+					break;
+				case rotation_2:
+					temp_tile[1][0]=present_tile;
+							temp_tile[1][1]=present_tile;
+							temp_tile[2][1]=present_tile;
+							temp_tile[2][2]=present_tile;
+					break;
+				case rotation_L:
+					temp_tile[0][1]=present_tile;
+							temp_tile[1][0]=present_tile;
+							temp_tile[1][1]=present_tile;
+							temp_tile[2][0]=present_tile;
+					break;
+			}
+			break;
+		case J: //J,藍色
+			switch(present_status)
+			{
+				case rotation_0:
+					temp_tile[0][0]=present_tile;
+							temp_tile[1][0]=present_tile;
+							temp_tile[1][1]=present_tile;
+							temp_tile[1][2]=present_tile;
+					break;
+				case rotation_R:
+					temp_tile[0][1]=present_tile;
+							temp_tile[1][1]=present_tile;
+							temp_tile[2][1]=present_tile;
+							temp_tile[0][2]=present_tile;
+					break;
+				case rotation_2:
+					temp_tile[2][2]=present_tile;
+							temp_tile[1][0]=present_tile;
+							temp_tile[1][1]=present_tile;
+							temp_tile[1][2]=present_tile;
+					break;
+				case rotation_L:
+					temp_tile[2][0]=present_tile;
+							temp_tile[0][1]=present_tile;
+							temp_tile[1][1]=present_tile;
+							temp_tile[2][1]=present_tile;		
+					break;
+			}
+			break;
+		case L: //L,橘色
+			switch(present_status)
+			{
+				case rotation_0:
+					temp_tile[0][2]=present_tile;
+							temp_tile[1][0]=present_tile;
+							temp_tile[1][1]=present_tile;
+							temp_tile[1][2]=present_tile;
+					break;
+				case rotation_R:
+					temp_tile[0][1]=present_tile;
+							temp_tile[1][1]=present_tile;
+							temp_tile[2][1]=present_tile;
+							temp_tile[2][2]=present_tile;
+					break;
+				case rotation_2:
+					temp_tile[1][0]=present_tile;
+							temp_tile[1][1]=present_tile;
+							temp_tile[1][2]=present_tile;
+							temp_tile[2][0]=present_tile;
+					break;
+				case rotation_L:
+					temp_tile[0][0]=present_tile;
+							temp_tile[0][1]=present_tile;
+							temp_tile[1][1]=present_tile;
+							temp_tile[2][1]=present_tile;
+					break;
+			}
+			break;
+	}
+	
+	decide_bound();
+}
+
+function down()
+{
+	timer();
+}
+
+</script>
+</body>
+</html>

@@ -1,0 +1,3954 @@
+<!DOCTYPE>
+<meta charset="utf-8"> 
+<html>
+<head>
+</head>
+
+<script src="jquery-1.11.1.js">
+//導入jQurey函式庫,主要是為了引入劇情文字檔用
+</script>
+
+<script>
+var g_num=1;
+
+/*
+AI託管功能本來要下回合才會生效
+因為錯過一開始產生方塊時的判斷
+經過修改後可以當回合生效
+我修改是不管AI有沒有生效都照樣計算
+不過可能會有些問題,特別是高度落到較低的時候
+
+AI託管功能
+左邊的是B鍵
+右邊的是Num 9鍵
+
+採toggle機制
+也就是本來是開的按之後就是關,若原先是關的話按之後開
+
+然後目前AI瞬落有時會有問題
+就是操縱的俄羅斯方塊少掉一部分
+但還不太清楚是哪邊出問題
+可能要除錯一段時間
+那tetris_14.html
+就此告個段落
+*/
+
+/*
+部分簡體註解資料來源
+http://www.it610.com/article/4429577.htm
+
+AI程式碼與註解資料來源
+http://www.cnblogs.com/mumuxinfei/p/4587325.html
+
+採PierreDellacherie方式(演算法,英文部分是人名)
+
+擺放方式是用窮舉法
+(因為俄羅斯方塊不是佔一個點,形狀又不同
+感覺A*或其它尋路演算法不太知道怎麼用)
+*/
+
+/* 2016/04/09   開始著手AI相關
+俄羅斯方塊AI思考大概是:
+針對現有方塊去窮舉全部落法
+若不考慮大幅移動障礙,也就是不支援插入的話
+因為俄羅斯方塊版的寬度通常是10
+一種方塊,四個旋轉狀態,最多40種落法
+然後寫個評估函數
+根據些俄羅斯方塊版的資訊
+像當前與落下方塊後的高度,洞數,高低差等
+再使用分數最高的落法
+
+目前已知Javascript俄羅斯方塊AI原始碼網址
+http://www.cnblogs.com/mumuxinfei/p/4587325.html
+
+底下連結是關於javascript物件導向的多種寫法
+http://www.ruanyifeng.com/blog/2010/05/object-oriented_javascript_encapsulation.html
+http://www.ruanyifeng.com/blog/2012/07/three_ways_to_define_a_javascript_class.html
+*/
+var canvas_width = 1000;
+var canvas_height= 580;
+
+canvas_element = document.createElement("canvas");
+canvas_element.setAttribute("height",canvas_height);
+canvas_element.setAttribute("width",canvas_width);
+//canvas_element.style="display:block; position:absolute; top:0px; left:0px;";
+document.documentElement.appendChild(canvas_element);
+
+//var canvas_element = document.getElementById("canvas");
+var ctx=canvas_element.getContext("2d");
+ctx.fillStyle="#000000";
+ctx.fillRect(0, 0,canvas_element.width , canvas_element.height);
+
+var tetris_width = 10;
+//var tetris_height = 22;
+var tetris_height = 20;
+
+
+var tile_width=30;
+var tile_height=25;
+var tile_center_left=(canvas_element.width/2)-((tile_width*tetris_width)/2);
+var tile_center_top=(canvas_element.height/2)-((tile_height*tetris_height)/2);
+
+
+var board = [];
+var board2= [];
+
+var all_tetris_enum=[];
+//四維陣列,7種方塊  4旋轉狀態  4橫列 4縱軸
+
+var temp_tile_P1=[];
+var temp_tile_P2=[];
+var AI_temp_tile_P1=[];
+var AI_temp_tile_P2=[];
+
+
+var temp_tile_left;
+var temp_tile_right;
+var temp_tile_top;
+var temp_tile_bottom;
+
+var next_tile = [];
+var hold_tile = [];
+
+var current_hold_tile= -1;
+
+//------產生、畫預覽方塊用的-------
+
+var tile_loop=[];
+var run_tile_P1=[];
+var run_tile_P2=[];
+var present_tile=0;
+var current_order=0;
+
+
+//---------------------------------
+
+var current_column;
+var current_row;
+
+var aggregate_height_P1=[];
+var aggregate_height_P2=[];
+var space_of_line=[];
+
+var collision_flag=false;
+var hold_flag=false;
+
+var can_move_flag=true;
+var loop_end_flag=false;
+
+//-----------wall kick機制相關----------
+var c_flag=false;	//順時針旋轉flag
+var cc_flag=false;	//逆時針旋轉flag
+
+var test1_flag=true;
+var test2_flag=true;
+var test3_flag=true;
+var test4_flag=true;
+var test5_flag=true;
+//--------------------------------------
+var pre_status=0;
+//旋轉失敗時使用
+var present_status=0; 
+//0是往上平放,1是順時針90度旋轉依此類推
+
+const rotation_0=0; //0轉向
+const rotation_R=1; //R轉向(右轉)
+const rotation_2=2; //2轉向(0轉向反轉)
+const rotation_L=3; //L轉向
+
+const NO_TILE=0;
+const I=1;
+const O=2;
+const T=3;
+const S=4;
+const Z=5;
+const J=6;
+const L=7;
+const FIXED=8;
+//const =10;
+//方塊下落時+10
+const DOWN_COLLISION=18;
+
+//玩家1,按鍵配置
+//AI託管開關,B
+const left_arrow=37;
+const right_arrow=39;
+const down_arrow=40;
+const Z_key=90;
+const X_key=88;
+const C_key=67;
+const space_key=32;
+const B_key=66;
+
+//玩家2,按鍵配置
+//右側數字,0(瞬落) 96,1(逆時針旋轉) 97,2(順時針) 98,3(hold) 99
+//J(左)74 K(下) 75 L(右) 76
+//AI託管開關,右側數字鍵9
+	
+const J_key=74;
+const K_key=75;
+const L_key=76;
+const NUM_0_key=96;
+const NUM_1_key=97;
+const NUM_2_key=98;
+const NUM_3_key=99;
+const NUM_9_key=105;
+
+//------------玩家2相關-------
+var current_column_P2;
+var current_row_P2;
+
+var c_flag_P2=false;	//順時針旋轉flag
+var cc_flag_P2=false;	//逆時針旋轉flag
+
+var temp_tile_P2=[];
+var present_status_P2=0;
+var pre_status_P2=0;
+var can_move_flag_P2=true;
+var loop_end_flag_P2=false;
+var present_tile_P2=0;
+
+var test1_flag_P2=true;
+var test2_flag_P2=true;
+var test3_flag_P2=true;
+var test4_flag_P2=true;
+var test5_flag_P2=true;
+
+//--------------------------
+
+//-----------AI相關---------
+var tetris_AI_action_list=[];
+
+//-----------劇情相關變數-----------
+var h=1;
+//劇情顯示到第幾個字
+var m=0;
+//載入圖檔統計,目前這變數其實沒什麼作用
+//但避免日後用到,相關的程式碼就先保留不動
+
+var text_array = [];
+var temp_array = [];
+
+var name_match = [];
+var head_match = [];
+
+var game_image=[];
+    game_image[0] = "background_water.png";
+
+var game_text=[];
+	game_text[0]=" ";
+	game_text[1]=" ";
+	game_text[2]=" ";
+	game_text[3]=" "; 
+	
+var full_display_flag=false;
+var display_end_flag=false;
+var display_interval=30;
+//----------------------------------
+function Tetris(name,board,current_column,current_row,axis,
+                temp_tile,c_flag,cc_flag,present_status,pre_status,
+				can_move_flag,loop_end_flag,current_order,present_tile,run_tile,
+				next_tile,next_axis,tile_loop,current_hold_tile,hold_axis,
+				temp_tile_right,temp_tile_bottom,temp_tile_top,temp_tile_left,hold_flag,
+				collision_flag,hold_tile,air,test_flag,test_num,
+				stop_height,aggregate_height,
+				test1_flag,test2_flag,test3_flag,test4_flag,test5_flag)
+{
+	this.name=name;
+	this.board = board;
+	this.current_column=current_column;
+	this.current_row=current_row;
+	this.axis=axis;
+	this.temp_tile=temp_tile;
+	this.c_flag=c_flag;
+	this.cc_flag=cc_flag;
+	this.present_status=present_status;
+	this.pre_status=pre_status;
+	this.can_move_flag=can_move_flag;
+	this.loop_end_flag=loop_end_flag;
+	this.current_order=current_order;
+	this.present_tile=present_tile;
+	this.run_tile = run_tile;
+	this.next_tile=next_tile;
+	this.next_axis=next_axis;
+	this.tile_loop=tile_loop;
+	this.current_hold_tile=current_hold_tile;
+	this.hold_axis=hold_axis;
+	this.temp_tile_right=temp_tile_right;
+	this.temp_tile_bottom=temp_tile_bottom;
+	this.temp_tile_top=temp_tile_top;
+	this.temp_tile_left=temp_tile_left
+	this.hold_flag=hold_flag;
+	this.collision_flag=collision_flag;
+	this.hold_tile=hold_tile;
+	this.air=air;
+	this.test_flag=test_flag;
+	this.test_num=test_num;
+	this.stop_height=stop_height;
+	this.aggregate_height=aggregate_height;
+	this.test1_flag=test1_flag;
+	this.test2_flag=test2_flag;
+	this.test3_flag=test3_flag;
+	this.test4_flag=test4_flag;
+	this.test5_flag=test5_flag;
+}
+
+//初始化俄羅斯方塊版的二維陣列
+for(var i=0;i<tetris_height;i++)
+{
+	board[i] = [];
+	board2[i] = [];
+	for(var j=0;j<tetris_width;j++)
+	{
+		board[i][j]=0;
+		board2[i][j]=0;
+	}
+}
+
+function AI(AI_enable,AI_aggregate_height,AI_space_of_line,AI_turn_end_flag,AI_action_order,AI_action_list,AI_here,AI_temp_tile,AI_action_moves)
+{
+	this.AI_enable = AI_enable;
+	this.AI_aggregate_height=AI_aggregate_height;
+	this.AI_space_of_line=AI_space_of_line;
+	this.AI_turn_end_flag=AI_turn_end_flag;
+	this.AI_action_order=AI_action_order;
+	this.AI_action_list=AI_action_list;
+	this.AI_here=AI_here;
+	this.AI_temp_tile=AI_temp_tile;
+	this.AI_action_moves=AI_action_moves;
+}
+
+
+//初始化正被取出的小俄羅斯方塊的二維陣列
+for(var i=0;i<4;i++)
+{
+	temp_tile_P1[i] = [];
+	temp_tile_P2[i] = [];
+	AI_temp_tile_P1[i] = [];
+	AI_temp_tile_P2[i] = [];
+	
+	for(var j=0;j<4;j++)
+	{
+		temp_tile_P1[i][j] = 0;
+		temp_tile_P2[i][j] = 0;
+		AI_temp_tile_P1[i][j] = 0;
+		AI_temp_tile_P2[i][j] = 0;
+	}
+}
+
+//初始化預覽方塊
+for(var k=1;k<8;k++)
+{
+	next_tile[k]=[];
+	hold_tile[k]=[];
+	
+	for(var i=0;i<4;i++)
+	{
+		next_tile[k][i]=[];
+		hold_tile[k][i]=[];
+		
+		for(var j=0;j<4;j++)
+		{
+			next_tile[k][i][j]=0;
+			hold_tile[k][i][j]=[];
+		}
+	}
+}
+
+for(var l=0;l<4;l++)
+{
+	all_tetris_enum[l]=[];
+	
+	for(var k=1;k<8;k++)
+	{
+		all_tetris_enum[l][k]=[];
+		
+		for(var i=0;i<4;i++)
+		{
+			all_tetris_enum[l][k][i]=[];
+		
+			for(var j=0;j<4;j++)
+			{
+				all_tetris_enum[l][k][i][j]=0;
+			}
+		}
+	}
+}
+
+//case 1:	//直,青藍色
+all_tetris_enum[0][1][1][0]=1;
+all_tetris_enum[0][1][1][1]=1;
+all_tetris_enum[0][1][1][2]=1;
+all_tetris_enum[0][1][1][3]=1;
+
+all_tetris_enum[1][1][0][2]=1;
+all_tetris_enum[1][1][1][2]=1;
+all_tetris_enum[1][1][2][2]=1;
+all_tetris_enum[1][1][3][2]=1;
+
+all_tetris_enum[2][1][2][0]=1;
+all_tetris_enum[2][1][2][1]=1;
+all_tetris_enum[2][1][2][2]=1;
+all_tetris_enum[2][1][2][3]=1;
+
+all_tetris_enum[3][1][0][1]=1;
+all_tetris_enum[3][1][1][1]=1;
+all_tetris_enum[3][1][2][1]=1;
+all_tetris_enum[3][1][3][1]=1;
+	//case 2: //正方形,黃色   正方形旋轉不用變化
+all_tetris_enum[0][2][0][1]=2;
+all_tetris_enum[0][2][0][2]=2;
+all_tetris_enum[0][2][1][1]=2;
+all_tetris_enum[0][2][1][2]=2;
+
+all_tetris_enum[1][2][0][1]=2;
+all_tetris_enum[1][2][0][2]=2;
+all_tetris_enum[1][2][1][1]=2;
+all_tetris_enum[1][2][1][2]=2;
+
+all_tetris_enum[2][2][0][1]=2;
+all_tetris_enum[2][2][0][2]=2;
+all_tetris_enum[2][2][1][1]=2;
+all_tetris_enum[2][2][1][2]=2;
+
+all_tetris_enum[3][2][0][1]=2;
+all_tetris_enum[3][2][0][2]=2;
+all_tetris_enum[3][2][1][1]=2;
+all_tetris_enum[3][2][1][2]=2;
+	//case 3:	//卜,也就是T型,紫色
+all_tetris_enum[0][3][0][1]=3;
+all_tetris_enum[0][3][1][0]=3;
+all_tetris_enum[0][3][1][1]=3;
+all_tetris_enum[0][3][1][2]=3;
+
+all_tetris_enum[1][3][0][1]=3;
+all_tetris_enum[1][3][1][1]=3;
+all_tetris_enum[1][3][1][2]=3;
+all_tetris_enum[1][3][2][1]=3;
+
+all_tetris_enum[2][3][1][0]=3;
+all_tetris_enum[2][3][1][1]=3;
+all_tetris_enum[2][3][1][2]=3;
+all_tetris_enum[2][3][2][1]=3;
+
+all_tetris_enum[3][3][0][1]=3;
+all_tetris_enum[3][3][1][0]=3;
+all_tetris_enum[3][3][1][1]=3;
+all_tetris_enum[3][3][2][1]=3;
+	//case 4: //S,綠色
+all_tetris_enum[0][4][0][1]=4;
+all_tetris_enum[0][4][0][2]=4;
+all_tetris_enum[0][4][1][0]=4;
+all_tetris_enum[0][4][1][1]=4;
+
+all_tetris_enum[1][4][0][1]=4;
+all_tetris_enum[1][4][1][1]=4;
+all_tetris_enum[1][4][1][2]=4;
+all_tetris_enum[1][4][2][2]=4;
+
+all_tetris_enum[2][4][1][1]=4;
+all_tetris_enum[2][4][1][2]=4;
+all_tetris_enum[2][4][2][0]=4;
+all_tetris_enum[2][4][2][1]=4;
+
+all_tetris_enum[3][4][0][0]=4;
+all_tetris_enum[3][4][1][0]=4;
+all_tetris_enum[3][4][1][1]=4;
+all_tetris_enum[3][4][2][1]=4;
+	//case 5: //N,紅色
+all_tetris_enum[0][5][0][0]=5;
+all_tetris_enum[0][5][0][1]=5;
+all_tetris_enum[0][5][1][1]=5;
+all_tetris_enum[0][5][1][2]=5;
+
+all_tetris_enum[1][5][0][2]=5;
+all_tetris_enum[1][5][1][1]=5;
+all_tetris_enum[1][5][1][2]=5;
+all_tetris_enum[1][5][2][1]=5;
+
+all_tetris_enum[2][5][1][0]=5;
+all_tetris_enum[2][5][1][1]=5;
+all_tetris_enum[2][5][2][1]=5;
+all_tetris_enum[2][5][2][2]=5;
+
+all_tetris_enum[3][5][0][1]=5;
+all_tetris_enum[3][5][1][0]=5;
+all_tetris_enum[3][5][1][1]=5;
+all_tetris_enum[3][5][2][0]=5;	
+	//case 6: //J,藍色								
+all_tetris_enum[0][6][0][0]=6;
+all_tetris_enum[0][6][1][0]=6;
+all_tetris_enum[0][6][1][1]=6;
+all_tetris_enum[0][6][1][2]=6;
+
+all_tetris_enum[1][6][0][2]=6;
+all_tetris_enum[1][6][0][1]=6;
+all_tetris_enum[1][6][1][1]=6;
+all_tetris_enum[1][6][2][1]=6;
+
+all_tetris_enum[2][6][1][0]=6;
+all_tetris_enum[2][6][1][1]=6;
+all_tetris_enum[2][6][1][2]=6;
+all_tetris_enum[2][6][2][2]=6;
+
+all_tetris_enum[3][6][0][1]=6;
+all_tetris_enum[3][6][1][1]=6;
+all_tetris_enum[3][6][2][0]=6;
+all_tetris_enum[3][6][2][1]=6;
+	//case 7: //L,橘色
+all_tetris_enum[0][7][0][2]=7;
+all_tetris_enum[0][7][1][0]=7;
+all_tetris_enum[0][7][1][1]=7;
+all_tetris_enum[0][7][1][2]=7;
+
+all_tetris_enum[1][7][0][1]=7;
+all_tetris_enum[1][7][1][1]=7;
+all_tetris_enum[1][7][2][1]=7;
+all_tetris_enum[1][7][2][2]=7;
+
+all_tetris_enum[2][7][1][0]=7;
+all_tetris_enum[2][7][1][1]=7;
+all_tetris_enum[2][7][1][2]=7;
+all_tetris_enum[2][7][2][0]=7;
+
+all_tetris_enum[3][7][0][0]=7;
+all_tetris_enum[3][7][0][1]=7;
+all_tetris_enum[3][7][1][1]=7;
+all_tetris_enum[3][7][2][1]=7;
+
+var axis_P1=100;
+var axis_P2=550;
+
+var next_axis_P1=420;
+var next_axis_P2=880;
+
+var hold_axis_P1=50;
+var hold_axis_P2=500;
+
+var test_flag=true;
+var test_num=0;
+var stop_height=0;
+
+var AI_aggregate_height_P1=[];
+var AI_aggregate_height_P2=[];
+var AI_space_of_line_P1=[];
+var AI_space_of_line_P2=[];
+var AI_turn_end_flag=false;
+var AI_action_order=-1;
+var AI_action_list_P1=[];
+var AI_action_list_P2=[];
+
+//Object傳址,一般變數傳值
+var tetris_P1 = new Tetris("P1",board,current_column,current_row,axis_P1,temp_tile_P1,c_flag,cc_flag,present_status,pre_status,can_move_flag,loop_end_flag,current_order,present_tile,run_tile_P1,next_tile,next_axis_P1,tile_loop,current_hold_tile,hold_axis_P1,0,0,3,3,false,false,hold_tile,0,test_flag,test_num,stop_height,aggregate_height_P1,test1_flag,test2_flag,test3_flag,test4_flag,test5_flag);
+var tetris_P2 = new Tetris("P2",board2,current_column,current_row,axis_P2,temp_tile_P2,c_flag,cc_flag,present_status,pre_status,can_move_flag,loop_end_flag,current_order,present_tile,run_tile_P2,next_tile,next_axis_P2,tile_loop,current_hold_tile,hold_axis_P2,0,0,3,3,false,false,hold_tile,0,test_flag,test_num,stop_height,aggregate_height_P2,test1_flag,test2_flag,test3_flag,test4_flag,test5_flag);
+
+//var tetris_AI = new AI(AI_enable,AI_aggregate_height,AI_space_of_line,AI_turn_end_flag,AI_action_order,AI_action_list);
+var tetris_AI_P1 = new AI(false,AI_aggregate_height_P1,AI_space_of_line_P1,AI_turn_end_flag,AI_action_order,AI_action_list_P1,-1,AI_temp_tile_P1,null);
+var tetris_AI_P2 = new AI(true,AI_aggregate_height_P2,AI_space_of_line_P2,AI_turn_end_flag,AI_action_order,AI_action_list_P2,-1,AI_temp_tile_P2,null);
+//---------先插入段劇情腳本相關處理片段----------
+/*
+var drama_timer = setInterval(parse_text, 1000/60);
+//document.addEventListener("keydown",keydown_related,false);
+
+//var txt_file_name= "tetris_drama.txt";
+var txt_file_name= "game0.txt";
+
+//嗯,劇情相關的,需要決定版面配置
+//然後再產生相關圖檔
+//以後一旦改動,會很麻煩
+//(除非圖檔全是向量圖,較能任意縮放)
+//所以決定後基本上不改動
+
+//現在還不適合決定
+//因為以後會有兩個俄羅斯方塊版
+//那畫面解析度會變
+//所以還是得需要先做兩俄羅斯方塊版與AI
+
+$(document).ready
+(
+	function ()
+    {
+		$.get(txt_file_name, 
+				function(data)
+				{
+                    //localStorage.auto_save_file="game0.txt";
+
+                    text_array.push(data);
+                    text_array=text_array.toString().split('\n');
+                    text_array[0]=text_array[0].replace(/:#:p/g,localStorage.auto_save_playername);
+                    temp_array=text_array[0].split(' ');
+
+                    for(var k=0;k<temp_array.length;k++)
+                    {
+                        name_match.push(temp_array[k]);
+                    }
+
+                    temp_array=text_array[1].split(' ');
+ 
+                    for(var k=0;k<temp_array.length;k++)
+                    {
+                        head_match.push(temp_array[k]);
+                    }
+					
+                },
+				'text');
+    }
+);
+*/
+
+//-------------劇情腳本處理片段完畢-----------------
+
+var down_timer_P1 = setInterval(timer(tetris_P1,tetris_AI_P1), 300);
+var down_timer_P2 = setInterval(timer(tetris_P2,tetris_AI_P2), 300);
+document.addEventListener("keydown",function(e){keydown_related_P1(e,tetris_AI_P1);},false);
+document.addEventListener("keydown",function(e){keydown_related_P2(e,tetris_AI_P2);},false);
+
+init_tile(next_tile);
+init_tile(hold_tile);
+decide_tile(tetris_P1);
+decide_tile(tetris_P2);
+
+create_tile(tetris_P1);
+create_tile(tetris_P2);
+
+var temp_object = AI_select(tetris_P1,tetris_AI_P1);
+tetris_AI_P1.action_moves = temp_object.action_moves;
+
+temp_object = AI_select(tetris_P2,tetris_AI_P2);
+tetris_AI_P2.action_moves = temp_object.action_moves;
+
+var air=0;
+
+function _timer(tetris_name,AI_name)
+{
+    tetris_name.air++;
+	
+   
+    if(tetris_name.air%3 == 0)
+    {  
+		tetris_name.current_row++;
+		collision_related(tetris_name,AI_name);
+        tetris_name.air=0;
+		
+		if(AI_name.AI_enable)
+		{
+			tetris_AI_run(tetris_name,AI_name,AI_name.action_moves);
+		}
+    }
+	
+	re_draw(tetris_name);
+	draw_hold(tetris_name);
+	ghost_piece(tetris_name);
+}
+
+function timer(tetris_name,AI_name)
+{
+	return function()
+	{
+		_timer(tetris_name,AI_name);
+	}
+}
+
+
+function collision_related(tetris_name,AI_name)
+{
+	for(var i=0;i<tetris_height;i++)
+	{
+		for(var j=0;j<tetris_width;j++)
+		{
+			if(FIXED != tetris_name.board[i][j])
+				tetris_name.board[i][j]=0;
+		}
+	}
+	
+	//旋轉時,值一次可能會跳過1,所以用>=
+	if(tetris_name.current_row+tetris_name.temp_tile_bottom >= tetris_height)  
+	{	
+		for(var i=tetris_name.current_row;i<=tetris_name.current_row+tetris_name.temp_tile_bottom;i++)
+		{
+			for(var j=tetris_name.current_column;j<=tetris_name.current_column+tetris_name.temp_tile_right;j++)
+			{
+				if(tetris_name.temp_tile[i-tetris_name.current_row][j-tetris_name.current_column] != 0 && tetris_name.temp_tile[i-tetris_name.current_row][j-tetris_name.current_column] != undefined)
+				{
+					tetris_name.board[i-1-(tetris_name.current_row+tetris_name.temp_tile_bottom-tetris_height)][j]+=10;	
+				}
+			}
+		}
+			
+		for(var t_i=0;t_i<tetris_height;t_i++)
+		{
+			for(var t_j=0;t_j<tetris_width;t_j++)
+			{
+				if(DOWN_COLLISION == tetris_name.board[t_i][t_j])   
+				{
+					tetris_name.collision_flag=true;
+				}
+			}
+		}
+		
+		if(tetris_name.collision_flag)	
+		{
+			for(var t_i=0;t_i<tetris_height;t_i++)
+			{					
+				for(var t_j=0;t_j<tetris_width;t_j++)
+				{
+					if(tetris_name.board[t_i][t_j]==10)
+					{
+						tetris_name.board[t_i-1][t_j]=FIXED;
+						tetris_name.board[t_i][t_j]=0;
+					}
+					
+					if(DOWN_COLLISION==tetris_name.board[t_i][t_j])
+					{
+						tetris_name.board[t_i-1][t_j]=FIXED;
+						tetris_name.board[t_i][t_j]=FIXED;
+							
+						if(t_i ==2)	
+						{
+							game_over();
+							break;
+						}
+					}
+						
+				}
+			}
+			
+			tetris_name.collision_flag=false;
+			check_line(tetris_name);
+			create_tile(tetris_name);
+			
+			temp_object = AI_select(tetris_name,AI_name);
+			AI_name.action_moves = temp_object.action_moves;
+		}
+		else
+		{
+			//單純觸底
+			for(var t_i=0;t_i<tetris_height;t_i++)
+			{					
+				for(var t_j=0;t_j<tetris_width;t_j++)
+				{
+					if(tetris_name.board[t_i][t_j]==10)
+					{
+						tetris_name.board[t_i][t_j]=FIXED;
+					}	
+				}
+			}
+		
+			check_line(tetris_name);
+			tetris_name.hold_flag=false;
+			create_tile(tetris_name);
+
+			temp_object = AI_select(tetris_name,AI_name);
+			AI_name.action_moves = temp_object.action_moves;
+		}
+	}
+	else
+	{
+		for(var i=tetris_name.current_row;i<=tetris_name.current_row+tetris_name.temp_tile_bottom;i++)
+		{
+			for(var j=tetris_name.current_column;j<=tetris_name.current_column+tetris_name.temp_tile_right;j++)
+			{			
+
+				if(tetris_name.temp_tile[i-tetris_name.current_row][j-tetris_name.current_column] != 0 && tetris_name.temp_tile[i-tetris_name.current_row][j-tetris_name.current_column] != undefined)
+				{
+					tetris_name.board[i][j]+=10;
+				}
+			}
+		}
+	}
+	
+	for(var t_i=0;t_i<tetris_height;t_i++)
+	{
+		for(var t_j=0;t_j<tetris_width;t_j++)
+		{
+			if(DOWN_COLLISION == tetris_name.board[t_i][t_j])  //畫方塊前先+10,白色是8
+			{
+				tetris_name.collision_flag=true;
+			}
+		}
+	}
+			
+	if(tetris_name.collision_flag)
+	{
+		for(var t_i=0;t_i<tetris_height;t_i++)
+		{					
+			for(var t_j=0;t_j<tetris_width;t_j++)
+			{
+				if(tetris_name.board[t_i][t_j]==10)
+				{
+					tetris_name.board[t_i-1][t_j]=FIXED;
+					tetris_name.board[t_i][t_j]=0;
+				}
+						
+				if(DOWN_COLLISION == tetris_name.board[t_i][t_j])
+				{
+					tetris_name.board[t_i-1][t_j]=FIXED;
+					tetris_name.board[t_i][t_j]=FIXED;
+				
+					if(t_i ==2)	
+					{
+						game_over();
+						break;
+					}
+				}
+			}
+		}
+				
+		tetris_name.collision_flag=false;
+		check_line(tetris_name);
+		tetris_name.hold_flag=false;
+		create_tile(tetris_name);
+
+		temp_object = AI_select(tetris_name,AI_name);
+		AI_name.action_moves = temp_object.action_moves;
+		
+	}
+}
+
+
+function re_draw(tetris_name){
+
+	for(var t_i=0;t_i<tetris_height;t_i++)
+	{
+		for(var t_j=0;t_j<tetris_width;t_j++)
+		{
+			if(tetris_name.board[t_i][t_j]==10)
+			{
+				tetris_name.board[t_i][t_j]=tetris_name.present_tile;
+			}
+		}
+	}
+
+	for(var i=0;i<tetris_height;i++)
+	{
+		for(var j=0;j<tetris_width;j++)
+		{
+			switch(tetris_name.board[i][j])
+			{
+				case NO_TILE:
+					ctx.fillStyle="#333333";
+					break;
+				case I:	//直,青藍色
+					ctx.fillStyle="#00FFFF";
+					break;
+				case O: //正方形,黃色
+					ctx.fillStyle="#FFFF00";
+					break;
+				case T:	//卜,紫色
+					ctx.fillStyle="#800080";
+					break;
+				case S: //S,綠色
+					ctx.fillStyle="#00FF00";
+					break;
+				case Z: //Z,紅色
+					ctx.fillStyle="#FF0000";
+					break;
+				case J: //J,藍色
+					ctx.fillStyle="#0000FF";
+					break;
+				case L: //L,橘色
+					ctx.fillStyle="#FFA500";
+					break;
+				case FIXED: //固定,白色
+					ctx.fillStyle="#FFFFFF";
+					break;
+			}
+			
+			//ctx.fillRect(tile_center_left+tile_width*j,tile_center_top+tile_height*i,tile_width,tile_height);
+			ctx.fillRect(tetris_name.axis+tile_width*j,25+tile_height*i,tile_width,tile_height);
+		}
+	}
+}
+
+function tile_clear(tetris_name)
+{
+	for(var i=0;i<4;i++)
+	{
+		for(var j=0;j<4;j++)
+		{
+			tetris_name.temp_tile[i][j]=0;
+		}
+	}
+}
+
+function create_tile(tetris_name,AI_name)
+{
+	
+	tetris_name.c_flag=false;
+	tetris_name.cc_flag=false;
+
+	tetris_name.current_row=0;
+	tetris_name.current_column=3;
+	tetris_name.present_status=0;
+	tetris_name.pre_status=0;
+
+	tetris_name.can_move_flag=true;
+
+	var sum=0;
+	tetris_name.loop_end_flag=false;
+	
+	tile_clear(tetris_name);
+	
+	if(tetris_name.current_order ==7)	//取出第八塊方塊時
+	{
+		decide_tile(tetris_name);
+		tetris_name.current_order=0;
+		tetris_name.present_tile=tetris_name.run_tile[0];
+		tetris_name.current_order++;
+	}
+	else
+	{
+		tetris_name.present_tile=tetris_name.run_tile[tetris_name.current_order];
+		tetris_name.current_order++;
+	}
+	
+	switch(tetris_name.present_tile)
+	{
+				case 1:	//直,青藍色
+					tetris_name.temp_tile[1][0]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][2]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][3]=tetris_name.present_tile;
+					break;
+				case 2: //正方形,黃色
+					tetris_name.temp_tile[0][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[0][2]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][2]=tetris_name.present_tile;
+					break;
+				case 3:	//卜,紫色
+					tetris_name.temp_tile[0][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][0]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][2]=tetris_name.present_tile;
+					break;
+				case 4: //S,綠色
+					tetris_name.temp_tile[0][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[0][2]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][0]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][1]=tetris_name.present_tile;
+					break;
+				case 5: //Z,紅色
+					tetris_name.temp_tile[0][0]=tetris_name.present_tile;
+					tetris_name.temp_tile[0][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][2]=tetris_name.present_tile;
+					break;
+				case 6: //J,藍色
+					tetris_name.temp_tile[0][0]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][0]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][2]=tetris_name.present_tile;
+					break;
+				case 7: //L,橘色
+					tetris_name.temp_tile[0][2]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][0]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][2]=tetris_name.present_tile;
+					break;
+				default:
+					
+	}
+	
+	decide_bound(tetris_name);
+	draw_next(tetris_name);
+}
+
+function draw_hold(tetris_name)
+{
+	if(-1 == tetris_name.current_hold_tile)
+	{
+		for(var i=0;i<4;i++)
+		{
+			for(var j=0;j<4;j++)
+			{
+				ctx.fillStyle="#CCCCCC";
+				ctx.fillRect(tetris_name.hold_axis+10*j,10+16*i,10,16);
+			}
+		}	
+	}
+	else
+	{
+		for(var i=0;i<4;i++)
+		{
+			for(var j=0;j<4;j++)
+			{
+				if(0 != tetris_name.hold_tile[tetris_name.current_hold_tile][i][j])
+				{
+					switch(tetris_name.current_hold_tile)
+					{
+						case 1:
+							ctx.fillStyle="#00FFFF";
+							break;
+						case 2:
+							ctx.fillStyle="#FFFF00";
+							break;
+						case 3:
+							ctx.fillStyle="#800080";
+							break;
+						case 4:
+							ctx.fillStyle="#00FF00";
+							break;
+						case 5:
+							ctx.fillStyle="#FF0000";
+							break;
+						case 6:
+							ctx.fillStyle="#0000FF";
+							break;
+						case 7:
+							ctx.fillStyle="#FFA500";
+							break;
+					}
+					ctx.fillRect(tetris_name.hold_axis+10*j,10+16*i,10,16);
+				}
+				else
+				{
+					ctx.fillStyle="#CCCCCC";
+					ctx.fillRect(tetris_name.hold_axis+10*j,10+16*i,10,16);
+				}
+			}
+		}
+	}
+}
+
+
+function decide_tile(tetris_name)
+{
+	var random_number;
+	
+	if(tetris_name.run_tile.length!=0)
+	{
+		tetris_name.run_tile.splice(0,7);
+
+		for(var i=1;i<8;i++)
+		{
+			tetris_name.tile_loop.push(i);
+		}
+		
+		for(var i=0;i<7;i++)
+		{
+			random_number=parseInt(Math.random()*tetris_name.tile_loop.length);
+			tetris_name.run_tile.push(tetris_name.tile_loop[random_number]);
+			tetris_name.tile_loop.splice(tetris_name.tile_loop.indexOf(tetris_name.tile_loop[random_number]),1);
+		}
+	}
+	else
+	{
+		for(var i=1;i<8;i++)
+		{
+			tetris_name.tile_loop.push(i);
+		}
+	
+		for(var i=0;i<7;i++)
+		{
+			random_number=parseInt(Math.random()*tetris_name.tile_loop.length);
+			tetris_name.run_tile.push(tetris_name.tile_loop[random_number]);
+			tetris_name.tile_loop.splice(tetris_name.tile_loop.indexOf(tetris_name.tile_loop[random_number]),1);
+		}
+	
+		for(var i=1;i<8;i++)
+		{
+			tetris_name.tile_loop.push(i);
+		}
+	
+		for(var i=0;i<7;i++)
+		{
+			random_number=parseInt(Math.random()*tetris_name.tile_loop.length);
+			tetris_name.run_tile.push(tile_loop[random_number]);
+			tetris_name.tile_loop.splice(tetris_name.tile_loop.indexOf(tetris_name.tile_loop[random_number]),1);
+		}
+	}
+}
+
+function init_tile(next_tile)
+//這邊是傳參數,僅是變數名沒改
+{
+	//case 1:	//直,青藍色
+	next_tile[1][1][0]=1;
+	next_tile[1][1][1]=1;
+	next_tile[1][1][2]=1;
+	next_tile[1][1][3]=1;
+	//case 2: //正方形,黃色   正方形旋轉不用變化
+	next_tile[2][0][1]=1;
+	next_tile[2][0][2]=1;
+	next_tile[2][1][1]=1;
+	next_tile[2][1][2]=1;
+	//case 3:	//卜,也就是T型,紫色
+	next_tile[3][0][1]=1;
+	next_tile[3][1][0]=1;
+	next_tile[3][1][1]=1;
+	next_tile[3][1][2]=1;
+	//case 4: //S,綠色
+	next_tile[4][0][1]=1;
+	next_tile[4][0][2]=1;
+	next_tile[4][1][0]=1;
+	next_tile[4][1][1]=1;
+	//case 5: //N,紅色
+	next_tile[5][0][0]=1;
+	next_tile[5][0][1]=1;
+	next_tile[5][1][1]=1;
+	next_tile[5][1][2]=1;	
+	//case 6: //J,藍色								
+	next_tile[6][0][0]=1;
+	next_tile[6][1][0]=1;
+	next_tile[6][1][1]=1;
+	next_tile[6][1][2]=1;
+	//case 7: //L,橘色
+	next_tile[7][0][2]=1;
+	next_tile[7][1][0]=1;
+	next_tile[7][1][1]=1;
+	next_tile[7][1][2]=1;
+}
+
+
+function draw_next(tetris_name)
+{
+	
+	//玩家一到460 pixel
+	//玩家二可從480 pixel開始到940
+	
+
+	for(var k=0;k<6;k++)
+	{
+		for(var i=0;i<4;i++)
+		{
+			for(var j=0;j<4;j++)
+			{
+				if(tetris_name.next_tile[tetris_name.run_tile[tetris_name.current_order+k]][i][j]==0)
+				{
+					ctx.fillStyle="#CCCCCC";
+					ctx.fillRect(tetris_name.next_axis+10*j,10+100*k+16*i,10,16);
+				}
+				else
+				{
+					switch(tetris_name.run_tile[tetris_name.current_order+k])
+					{
+						case 1:
+							ctx.fillStyle="#00FFFF";
+							break;
+						case 2:
+							ctx.fillStyle="#FFFF00";
+							break;
+						case 3:
+							ctx.fillStyle="#800080";
+							break;
+						case 4:
+							ctx.fillStyle="#00FF00";
+							break;
+						case 5:
+							ctx.fillStyle="#FF0000";
+							break;
+						case 6:
+							ctx.fillStyle="#0000FF";
+							break;
+						case 7:
+							ctx.fillStyle="#FFA500";
+							break;
+					}
+					ctx.fillRect(tetris_name.next_axis+10*j,10+100*k+16*i,10,16);
+				}
+			}
+		}
+	}
+}
+
+
+function keydown_related_P1(e,AI_name)
+{
+    //alert(e.keyCode);
+	
+    if(left_arrow == e.keyCode)  //按←
+	{
+        left_move(tetris_P1);
+	}
+   
+    if(right_arrow==e.keyCode)    //按→
+	{
+        right_move(tetris_P1);
+	}
+   
+    if(Z_key==e.keyCode)  //按Z鍵
+	{
+        rotate_counterclockwise(tetris_P1);      
+	}
+  
+    if(X_key==e.keyCode)    //按X鍵
+	{
+        rotate_clockwise(tetris_P1);
+	}
+	
+	if(C_key==e.keyCode)
+	{
+		hold(tetris_P1);
+	}
+	
+	if(space_key==e.keyCode)
+	{
+		hard_drop(tetris_P1);
+		//瞬落的英文
+	}
+ 
+    if(down_arrow==e.keyCode)    //按↓
+	{
+        _timer(tetris_P1,AI_name);
+	}
+	
+	if(B_key == e.keyCode)
+	{
+		tetris_AI_switch(AI_name);
+	}
+}
+
+function keydown_related_P2(e,AI_name)
+{
+	if(J_key == e.keyCode)  //按←
+	{
+        left_move(tetris_P2);
+	}
+   
+    if(L_key==e.keyCode)    //按→
+	{
+        right_move(tetris_P2);
+	}
+   
+    if(NUM_1_key==e.keyCode)
+	{
+        rotate_counterclockwise(tetris_P2);
+	}
+  
+    if(NUM_2_key==e.keyCode)
+	{
+        rotate_clockwise(tetris_P2);
+	}
+	
+	if(NUM_3_key==e.keyCode)
+	{
+		hold(tetris_P2);
+	}
+	
+	if(NUM_0_key==e.keyCode)
+	{
+		hard_drop(tetris_P2);
+	}
+ 
+    if(K_key==e.keyCode)
+	{
+        _timer(tetris_P2,AI_name);
+	}
+	
+	if(NUM_9_key == e.keyCode)
+	{
+		tetris_AI_switch(AI_name);
+	}
+}
+
+function left_move(tetris_name)
+{	
+	tetris_name.can_move_flag=true;
+	
+	//current_column值可能為負
+	
+	if(tetris_name.current_column>0)
+	{
+		if(check_collisioned(tetris_name,-1,0))
+		{
+			tetris_name.can_move_flag=false;
+		}
+		
+		if(tetris_name.can_move_flag)
+		{
+			tetris_name.current_column--;
+		}
+	}
+	else
+	{
+		if(tetris_name.temp_tile_left > 0 && tetris_name.current_column>-tetris_name.temp_tile_left)
+		{
+			tetris_name.current_column--;
+		}
+	}
+}
+
+
+function right_move(tetris_name)
+{	
+	tetris_name.can_move_flag=true;
+
+	if(tetris_name.current_column+tetris_name.temp_tile_right < 9)
+	{
+		if(check_collisioned(tetris_name,1,0))
+		{
+			tetris_name.can_move_flag=false;
+		}
+		
+		if(tetris_name.can_move_flag)
+		{
+			tetris_name.current_column++;
+		}
+	}
+}
+
+function hold(tetris_name)
+{
+	if(!tetris_name.hold_flag)
+	{
+		if(-1==tetris_name.current_hold_tile) 
+		{
+			tetris_name.current_hold_tile=tetris_name.present_tile;
+			create_tile(tetris_name);
+			tetris_name.hold_flag=true;
+		}
+		else
+		{
+			tetris_name.current_order--;
+			tetris_name.run_tile[tetris_name.current_order]=tetris_name.current_hold_tile;
+			tetris_name.current_hold_tile=tetris_name.present_tile;
+			create_tile(tetris_name);
+			tetris_name.hold_flag=true;
+		}
+	}
+	else
+	{
+		alert("本回合已交換hold方塊過");
+	}
+}
+
+function decide_bound(tetris_name)
+{
+	temp_tile_top=3;
+	tetris_name.temp_tile_left=3;
+	tetris_name.temp_tile_right=0;
+	tetris_name.temp_tile_bottom=0;
+	
+	for(var i=0;i<4;i++)
+	{
+		for(var j=0;j<4;j++)
+		{
+			if(tetris_name.temp_tile[i][j] != 0)
+			{
+				if(j<tetris_name.temp_tile_left)
+				{
+					tetris_name.temp_tile_left = j;
+				}
+				
+				
+				if(j>tetris_name.temp_tile_right)
+				{
+					tetris_name.temp_tile_right = j;
+				}
+					
+				if(i>tetris_name.temp_tile_bottom)
+				{
+					tetris_name.temp_tile_bottom=i;
+				}
+				
+				if(i<tetris_name.temp_tile_top)
+				{
+					tetris_name.temp_tile_top=i;
+				}
+			}
+		}
+	}
+	
+	
+	//邊界踢牆或者說邊界內縮判斷
+	if(tetris_name.current_column+tetris_name.temp_tile_right-tetris_name.temp_tile_left > 9)
+	{
+		tetris_name.current_column = 9-tetris_name.temp_tile_right+tetris_name.temp_tile_left;
+	}
+	
+}
+
+function check_line(tetris_name)
+{
+	var sum=0;
+
+	for(var i=tetris_height-1;i>=0;i--)
+	{
+		sum=0;
+	
+		for(var j=0;j<tetris_width;j++)
+		{
+			sum += tetris_name.board[i][j];
+		}
+		
+		if(sum==80)	//固定後的白色格子是8,橫的10格
+		{
+		
+			for(var k=i;k>0;k--)
+			{
+				for(var j=0;j<tetris_width;j++)
+				{
+					tetris_name.board[k][j]=tetris_name.board[k-1][j];
+				}
+			}
+			
+			i++;
+			
+		}
+	}
+}
+
+function rotate_clockwise(tetris_name)
+{
+	tetris_name.c_flag=true;
+	tetris_name.cc_flag=false;
+	
+	tetris_name.pre_status=tetris_name.present_status;
+	
+	if(tetris_name.present_status < rotation_L)
+	{
+		tetris_name.present_status += 1;
+	}
+	else
+	{
+		tetris_name.present_status = rotation_0;
+	}
+	
+	
+	//要儲存旋轉後的小俄羅斯方塊陣列,因此先把之前的清空
+	rotate_detail(tetris_name);
+}
+
+function rotate_counterclockwise(tetris_name)
+{
+	tetris_name.c_flag=false;
+	tetris_name.cc_flag=true;
+	
+	tetris_name.pre_status=tetris_name.present_status;
+
+	if(tetris_name.present_status > rotation_0)
+	{
+		tetris_name.present_status -= 1;
+	}
+	else
+	{
+		tetris_name.present_status = rotation_L;
+	}
+	
+	rotate_detail(tetris_name);
+}
+
+function rotate_detail(tetris_name)
+{
+	tile_clear(tetris_name);
+
+	//等下是兩層switch-case,雖然較不常見
+	//但本質上跟兩層if差不多啦!!就放心的用
+	switch(tetris_name.present_tile)
+	{
+		case I:	//直,青藍色
+			switch(tetris_name.present_status)
+			{
+				case rotation_0:
+					tetris_name.temp_tile[1][0]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][2]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][3]=tetris_name.present_tile;
+					break;
+				case rotation_R:
+					tetris_name.temp_tile[0][2]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][2]=tetris_name.present_tile;
+					tetris_name.temp_tile[2][2]=tetris_name.present_tile;
+					tetris_name.temp_tile[3][2]=tetris_name.present_tile;
+					break;
+				case rotation_2:
+					tetris_name.temp_tile[2][0]=tetris_name.present_tile;
+					tetris_name.temp_tile[2][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[2][2]=tetris_name.present_tile;
+					tetris_name.temp_tile[2][3]=tetris_name.present_tile;
+					break;
+				case rotation_L:
+					tetris_name.temp_tile[0][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[2][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[3][1]=tetris_name.present_tile;
+					break;
+			}
+			break;
+		case O: //正方形,黃色
+			switch(tetris_name.present_status)
+			{
+				case rotation_0:
+				case rotation_R:
+				case rotation_2:
+				case rotation_L:
+					tetris_name.temp_tile[0][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[0][2]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][2]=tetris_name.present_tile;
+					break;
+			}
+			break;
+			
+		case T:	//卜,紫色
+			switch(tetris_name.present_status)
+			{
+				case rotation_0:
+					tetris_name.temp_tile[0][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][0]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][2]=tetris_name.present_tile;
+					break;
+				case rotation_R:
+					tetris_name.temp_tile[1][2]=tetris_name.present_tile;
+					tetris_name.temp_tile[0][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[2][1]=tetris_name.present_tile;
+					break;
+				case rotation_2:
+					tetris_name.temp_tile[2][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][0]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][2]=tetris_name.present_tile;
+					break;
+				case rotation_L:
+					tetris_name.temp_tile[1][0]=tetris_name.present_tile;
+					tetris_name.temp_tile[0][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[2][1]=tetris_name.present_tile;
+					break;
+			}
+			break;
+			
+		case S: //S,綠色
+			switch(tetris_name.present_status)
+			{
+				case rotation_0:
+					tetris_name.temp_tile[0][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[0][2]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][0]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][1]=tetris_name.present_tile;
+					break;
+				case rotation_R:
+					tetris_name.temp_tile[0][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][2]=tetris_name.present_tile;
+					tetris_name.temp_tile[2][2]=tetris_name.present_tile;
+					break;
+				case rotation_2:
+					tetris_name.temp_tile[1][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][2]=tetris_name.present_tile;
+					tetris_name.temp_tile[2][0]=tetris_name.present_tile;
+					tetris_name.temp_tile[2][1]=tetris_name.present_tile;
+					break;
+				case rotation_L:
+					tetris_name.temp_tile[0][0]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][0]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[2][1]=tetris_name.present_tile;
+					break;
+			}
+			break;
+		case Z: //Z,紅色
+			switch(tetris_name.present_status)
+			{
+				case rotation_0:
+					tetris_name.temp_tile[0][0]=tetris_name.present_tile;
+					tetris_name.temp_tile[0][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][2]=tetris_name.present_tile;
+					break;
+				case rotation_R:
+					tetris_name.temp_tile[0][2]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][2]=tetris_name.present_tile;
+					tetris_name.temp_tile[2][1]=tetris_name.present_tile;
+					break;
+				case rotation_2:
+					tetris_name.temp_tile[1][0]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[2][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[2][2]=tetris_name.present_tile;
+					break;
+				case rotation_L:
+					tetris_name.temp_tile[0][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][0]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[2][0]=tetris_name.present_tile;
+					break;
+			}
+			break;
+		case J: //J,藍色
+			switch(tetris_name.present_status)
+			{
+				case rotation_0:
+					tetris_name.temp_tile[0][0]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][0]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][2]=tetris_name.present_tile;
+					break;
+				case rotation_R:
+					tetris_name.temp_tile[0][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[2][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[0][2]=tetris_name.present_tile;
+					break;
+				case rotation_2:
+					tetris_name.temp_tile[2][2]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][0]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][2]=tetris_name.present_tile;
+					break;
+				case rotation_L:
+					tetris_name.temp_tile[2][0]=tetris_name.present_tile;
+					tetris_name.temp_tile[0][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[2][1]=tetris_name.present_tile;		
+					break;
+			}
+			break;
+		case L: //L,橘色
+			switch(tetris_name.present_status)
+			{
+				case rotation_0:
+					tetris_name.temp_tile[0][2]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][0]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][2]=tetris_name.present_tile;
+					break;
+				case rotation_R:
+					tetris_name.temp_tile[0][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[2][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[2][2]=tetris_name.present_tile;
+					break;
+				case rotation_2:
+					tetris_name.temp_tile[1][0]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][2]=tetris_name.present_tile;
+					tetris_name.temp_tile[2][0]=tetris_name.present_tile;
+					break;
+				case rotation_L:
+					tetris_name.temp_tile[0][0]=tetris_name.present_tile;
+					tetris_name.temp_tile[0][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[1][1]=tetris_name.present_tile;
+					tetris_name.temp_tile[2][1]=tetris_name.present_tile;
+					break;
+			}
+			break;
+	}
+	
+	decide_bound(tetris_name);
+	check_rotate(tetris_name);
+}
+
+function check_rotate(tetris_name)
+{
+	tetris_name.test1_flag=true;
+	tetris_name.test2_flag=true;
+	tetris_name.test3_flag=true;
+	tetris_name.test4_flag=true;
+	tetris_name.test5_flag=true;
+	
+	rotate_test1(tetris_name);
+	
+	if(!tetris_name.test1_flag)
+	//因為我變數幾乎都全域變數
+	//因此想了一下就把相關函式改成不傳參數的了
+	{
+		switch(tetris_name.present_tile)
+		{
+			case I:	//I方塊
+				rotate_I_test2(tetris_name);
+				if(!tetris_name.test2_flag)	rotate_I_test3(tetris_name);
+				if(!tetris_name.test3_flag)	rotate_I_test4(tetris_name);
+				if(!tetris_name.test4_flag)	rotate_I_test5(tetris_name);
+				
+				if(!tetris_name.test5_flag)
+				{
+					tetris_name.present_status=tetris_name.pre_status;
+					rotate_detail(tetris_name);
+				}
+				break;
+			//沒case 2是因為正方形旋轉不用處理
+			case T:	//T
+			case S:	//S
+			case Z:	//Z
+			case J:	//J
+			case L:	//L
+				rotate_test2(tetris_name);
+				if(!tetris_name.test2_flag)	rotate_test3(tetris_name);
+				if(!tetris_name.test3_flag)	rotate_test4(tetris_name);
+				if(!tetris_name.test4_flag)	rotate_test5(tetris_name);
+				
+				if(!tetris_name.test5_flag)
+				{
+					tetris_name.present_status=tetris_name.pre_status;
+					rotate_detail(tetris_name);
+				}
+				break;
+		}
+	}
+}
+
+function rotate_test1(tetris_name)
+{
+	if(tetris_name.current_column<0 && tetris_name.temp_tile_left==0)
+	{
+		tetris_name.current_column=0;
+		rotate_detail(tetris_name);
+	}
+	else
+	{
+		if(check_collisioned(tetris_name,0,0))
+		{
+			tetris_name.test1_flag=false;
+		}
+	}
+}
+
+function rotate_test2(tetris_name)
+{
+	if(tetris_name.current_row+tetris_name.temp_tile_bottom <= tetris_height-1)  
+	{
+		if(tetris_name.c_flag)
+		{
+			switch(tetris_name.pre_status)
+			{
+				case 0:
+					if(check_collisioned(tetris_name,-1,0))
+					{
+						tetris_name.test2_flag=false;
+					}
+					break;
+				case 1:	//case 1代表從R轉向到2轉向   (1,0)
+					if(check_collisioned(tetris_name,1,0))
+					{
+						tetris_name.test2_flag=false;
+					}
+					break;
+				case 2:	//case 2代表從2轉向到L轉向轉向   (1,0)
+					if(check_collisioned(tetris_name,1,0))
+					{
+						tetris_name.test2_flag=false;
+					}
+					break;
+				case 3:	//case 3代表從L轉向到0轉向   (-1,0)
+					if(check_collisioned(tetris_name,-1,0))
+					{
+						tetris_name.test2_flag=false;
+					}
+					break;
+			}
+		}
+		
+		if(tetris_name.cc_flag)
+		{
+			switch(tetris_name.pre_status)
+			{
+				case 0:	//(+1, 0) 整個右偏1格再判斷碰撞
+					if(check_collisioned(tetris_name,1,0))
+					{
+						tetris_name.test2_flag=false;
+					}
+					break;
+				case 1:	//case 1代表從L轉向到2轉向 (-1,0)
+					if(check_collisioned(tetris_name,-1,0))
+					{
+						tetris_name.test2_flag=false;
+					}
+					break;
+				case 2:	//case 2代表從2轉向到R轉向	(-1,0)
+					if(check_collisioned(tetris_name,-1,0))
+					{
+						tetris_name.test2_flag=false;
+					}
+					break;
+				case 3:	//case 3代表從R轉向到0轉向
+					if(check_collisioned(tetris_name,1,0))
+					{
+						tetris_name.test2_flag=false;
+					}
+					break;
+			}
+		}
+	}
+	else
+	{
+		//觸底時的踢牆機制(晚些再處理,因為還要想要怎麼測試)
+		tetris_name.test2_flag=false;
+	}
+	
+	if(tetris_name.test2_flag)	//可以wall kick
+	{
+		switch(tetris_name.pre_status)
+		{
+			case 0:
+				if(tetris_name.c_flag)
+				{
+					tetris_name.current_column--;
+				}
+				if(tetris_name.cc_flag)
+				{
+					tetris_name.current_column++;
+				}
+				break;
+			case 1:
+				if(tetris_name.c_flag)
+				{
+					tetris_name.current_column++;
+				}
+				if(tetris_name.cc_flag)
+				{
+					tetris_name.current_column--;
+				}
+				break;
+			case 2:
+				if(tetris_name.c_flag)
+				{
+					tetris_name.current_column++;
+				}
+				if(tetris_name.cc_flag)
+				{
+					tetris_name.current_column--;
+				}
+				break;
+			case 3:
+				if(tetris_name.c_flag)
+				{
+					tetris_name.current_column--;
+				}
+				if(tetris_name.cc_flag)
+				{
+					tetris_name.current_column++;
+				}
+				break;
+		}
+	}
+}
+
+function rotate_test3(tetris_name)
+{
+	if(tetris_name.current_row+tetris_name.temp_tile_bottom+1 <= tetris_height-1)
+	//因為會往上下浮動一格,不加1會超出陣列索引
+	{
+		if(tetris_name.c_flag)
+		{
+			switch(tetris_name.pre_status)
+			{
+				case 0:
+					if(check_collisioned(board,-1,-1))
+					{
+						tetris_name.test3_flag=false;
+					}
+					break;
+				case 1:	//case 1代表從R轉向到2轉向
+					if(check_collisioned(board,1,1))
+					{
+						tetris_name.test3_flag=false;
+					}
+					break;
+				case 2:	//case 2代表從2轉向到L轉向
+					if(check_collisioned(board,1,-1))
+					{
+						tetris_name.test3_flag=false;
+					}
+					break;
+				case 3:	//case 3代表從L轉向到0轉向   (-1,0)
+					if(check_collisioned(board,-1,1))
+					{
+						tetris_name.test3_flag=false;
+					}
+					break;
+			}
+		}
+		
+		if(tetris_name.cc_flag)
+		{
+			switch(tetris_name.pre_status)
+			{
+				case 0:
+					if(check_collisioned(board,1,-1))
+					{
+						tetris_name.test3_flag=false;
+					}
+					break;
+				case 1:	//case 1代表從L轉向到2轉向
+					if(check_collisioned(board,-1,1))
+					{
+						tetris_name.test3_flag=false;
+					}
+					break;
+				case 2:	//case 2代表從2轉向到R轉向	(-1,0)
+					if(check_collisioned(board,-1,-1))
+					{
+						tetris_name.test3_flag=false;
+					}
+					break;
+				case 3:	//case 3代表從R轉向到0轉向
+					if(check_collisioned(board,1,1))
+					{
+						tetris_name.test3_flag=false;
+					}
+					break;
+			}
+		}
+	}
+	else
+	{
+		tetris_name.test3_flag=false;
+	}
+	
+	if(tetris_name.test3_flag)	//可以wall kick
+	{
+		switch(tetris_name.pre_status)
+		{
+			case 0:
+				if(tetris_name.c_flag)
+				{
+					tetris_name.current_row--;
+					tetris_name.current_column--;
+				}
+				if(tetris_name.cc_flag)
+				{
+					tetris_name.current_row--;
+					tetris_name.current_column++;
+				}
+				break;
+			case 1:
+				if(tetris_name.c_flag)
+				{
+					tetris_name.current_row++;
+					tetris_name.current_column++;
+				}
+
+				if(tetris_name.cc_flag)
+				{
+					tetris_name.current_row++;
+					tetris_name.current_column--;
+				}
+				break;
+			case 2:
+				if(tetris_name.c_flag)
+				{
+					tetris_name.current_row--;
+					tetris_name.current_column++;
+				}
+				if(tetris_name.cc_flag)
+				{
+					tetris_name.current_row--;
+					tetris_name.current_column--;
+				}
+				break;
+			case 3:
+				if(tetris_name.c_flag)
+				{
+					tetris_name.current_row++;
+					tetris_name.current_column--;
+				}
+				if(tetris_name.cc_flag)
+				{
+					tetris_name.current_row++;
+					tetris_name.current_column++;
+				}
+				break;
+		}
+	}
+}
+
+function rotate_test4(tetris_name)
+{
+	if(tetris_name.current_row+tetris_name.temp_tile_bottom+2 <= tetris_height-1)  
+	{
+		if(tetris_name.c_flag)
+		{
+			switch(tetris_name.pre_status)
+			{
+				case 0:
+					if(check_collisioned(tetris_name,0,2))
+					{
+						tetris_name.test4_flag=false;
+					}
+					break;
+				case 1:	//case 1代表從R轉向到2轉向
+					if(check_collisioned(tetris_name,0,-2))
+					{
+						tetris_name.test4_flag=false;
+					}
+					break;
+				case 2:	//case 2代表從2轉向到L轉向
+					if(check_collisioned(tetris_name,0,2))
+					{
+						tetris_name.test4_flag=false;
+					}
+					break;
+				case 3:	//case 3代表從L轉向到0轉向
+					if(check_collisioned(tetris_name,0,2))
+					{
+						tetris_name.test4_flag=false;
+					}
+					break;
+			}
+		}
+		
+		if(tetris_name.cc_flag)
+		{
+			switch(tetris_name.pre_status)
+			{
+				case 0:
+					if(check_collisioned(tetris_name,0,2))
+					{
+						tetris_name.test4_flag=false;
+					}
+					break;
+				case 1:	//case 1代表從L轉向到2轉向
+					if(check_collisioned(tetris_name,0,-2))
+					{
+						tetris_name.test4_flag=false;
+					}
+					break;
+				case 2:	//case 2代表從2轉向到R轉向
+					if(check_collisioned(tetris_name,0,2))
+					{
+						tetris_name.test4_flag=false;
+					}
+					break;
+				case 3:	//case 3代表從R轉向到0轉向
+					if(check_collisioned(tetris_name,0,2))
+					{
+						tetris_name.test4_flag=false;
+					}
+					break;
+			}
+		}
+	}
+	else
+	{
+		tetris_name.test4_flag=false;
+	}
+	
+	if(tetris_name.test4_flag)	//可以wall kick
+	{
+		switch(tetris_name.pre_status)
+		{
+			case 0:
+				if(tetris_name.c_flag)
+				{
+					tetris_name.current_row+=2;
+				}
+				if(tetris_name.cc_flag)
+				{
+					tetris_name.current_row+=2;
+				}
+				break;
+			case 1:
+				if(tetris_name.c_flag)
+				{
+					tetris_name.current_row-=2;
+				}
+				if(tetris_name.cc_flag)
+				{
+					tetris_name.current_row-=2;
+				}
+				break;
+			case 2:
+				if(tetris_name.c_flag)
+				{
+					tetris_name.current_row+=2;
+				}
+				if(tetris_name.cc_flag)
+				{
+					tetris_name.current_row+=2;
+				}
+				break;
+			case 3:
+				if(tetris_name.c_flag)
+				{
+					tetris_name.current_row-=2;
+				}
+				if(tetris_name.cc_flag)
+				{
+					tetris_name.current_row-=2;
+				}
+				break;
+		}		
+	}
+}
+
+function rotate_test5(tetris_name)
+{
+	if(tetris_name.current_row+tetris_name.temp_tile_bottom+2 <= tetris_height-1)  
+	{
+		if(tetris_name.c_flag)
+		{
+			switch(tetris_name.pre_status)
+			{
+				case 0:
+					if(check_collisioned(tetris_name,-1,2))
+					{
+						tetris_name.test5_flag=false;
+					}
+					break;
+				case 1:	//case 1代表從R轉向到2轉向
+					if(check_collisioned(tetris_name,1,-2))
+					{
+						tetris_name.test5_flag=false;
+					}
+					break;
+				case 2:	//case 2代表從2轉向到L轉向
+					if(check_collisioned(tetris_name,1,2))
+					{
+						tetris_name.test5_flag=false;
+					}
+					break;
+				case 3:	//case 3代表從L轉向到0轉向   (-1,0)
+					if(check_collisioned(tetris_name,-1,-2))
+					{
+						tetris_name.test5_flag=false;
+					}
+					break;
+			}
+		}
+		
+		if(tetris_name.cc_flag)
+		{
+			switch(tetris_name.pre_status)
+			{
+				case 0:
+					if(check_collisioned(tetris_name,1,2))
+					{
+						tetris_name.test5_flag=false;
+					}
+					break;
+				case 1:	//case 1代表從L轉向到2轉向
+					if(check_collisioned(tetris_name,-1,-2))
+					{
+						tetris_name.test5_flag=false;
+					}
+					break;
+				case 2:	//case 2代表從2轉向到R轉向
+					if(check_collisioned(tetris_name,-1,2))
+					{
+						tetris_name.test5_flag=false;
+					}
+					break;
+				case 3:	//case 3代表從R轉向到0轉向
+					if(check_collisioned(tetris_name,1,-2))
+					{
+						tetris_name.test5_flag=false;
+					}
+					break;
+			}
+		}
+	}
+	else
+	{
+		tetris_name.test5_flag=false;
+	}
+	
+	if(tetris_name.test5_flag)	//可以wall kick
+	{
+		switch(tetris_name.pre_status)
+		{
+			case 0:
+				if(tetris_name.c_flag)
+				{
+					tetris_name.current_row+=2;
+					tetris_name.current_column--;
+				}
+				if(tetris_name.cc_flag)
+				{
+					tetris_name.current_row+=2;
+					tetris_name.current_column++;
+				}
+				break;
+			case 1:
+				if(tetris_name.c_flag)
+				{
+					tetris_name.current_row-=2;
+					tetris_name.current_column++;
+				}
+				if(tetris_name.cc_flag)
+				{
+					tetris_name.current_row-=2;
+					tetris_name.current_column--;
+				}
+				break;
+			case 2:
+				if(tetris_name.c_flag)
+				{
+					tetris_name.current_row+=2;
+					tetris_name.current_column++;
+				}
+				if(tetris_name.cc_flag)
+				{
+					tetris_name.current_row+=2;
+					tetris_name.current_column--;
+				}
+				break;
+			case 3:
+				if(tetris_name.c_flag)
+				{
+					tetris_name.current_row-=2;
+					tetris_name.current_column--;
+				}
+				if(tetris_name.cc_flag)
+				{
+					tetris_name.current_row-=2;
+					tetris_name.current_column++;
+				}
+				break;
+		}		
+	}
+}
+
+
+function rotate_I_test2(tetris_name)
+{
+	if(tetris_name.current_row+tetris_name.temp_tile_bottom <= tetris_height-1)  
+	{
+		if(tetris_name.c_flag)
+		{
+			switch(tetris_name.pre_status)
+			{
+				case 0:
+					if(check_collisioned(tetris_name,-2,0))
+					{
+						tetris_name.test2_flag=false;
+					}
+					break;
+				case 1:	//case 1代表從R轉向到2轉向
+					if(check_collisioned(tetris_name,-1,0))
+					{
+						tetris_name.test2_flag=false;
+					}
+					break;
+				case 2:	//case 2代表從2轉向到L轉向
+					if(check_collisioned(tetris_name,2,0))
+					{
+						tetris_name.test2_flag=false;
+					}
+					break;
+				case 3:	//case 3代表從L轉向到0轉向
+					if(check_collisioned(tetris_name,1,0))
+					{
+						tetris_name.test2_flag=false;
+					}
+					break;
+			}
+		}
+		
+		if(tetris_name.cc_flag)
+		{
+			switch(tetris_name.pre_status)
+			{
+				case 0:
+					if(check_collisioned(tetris_name,-1,0))
+					{
+						tetris_name.test2_flag=false;
+					}
+					break;
+				case 1:	//case 1代表從L轉向到2轉向
+					if(check_collisioned(tetris_name,-2,0))
+					{
+						tetris_name.test2_flag=false;
+					}
+					break;
+				case 2:	//case 2代表從2轉向到R轉向
+					if(check_collisioned(tetris_name,1,0))
+					{
+						tetris_name.test2_flag=false;
+					}
+					break;
+				case 3:	//case 3代表從R轉向到0轉向
+					if(check_collisioned(tetris_name,2,0))
+					{
+						tetris_name.test2_flag=false;
+					}
+					break;
+			}
+		}
+	}
+	else
+	{
+		tetris_name.test2_flag=false;
+	}
+	
+	if(tetris_name.test2_flag)	//可以wall kick
+	{
+		switch(tetris_name.pre_status)
+		{
+			case 0:
+				if(tetris_name.c_flag)
+				{
+					tetris_name.current_column-=2;
+				}
+				if(tetris_name.cc_flag)
+				{
+					tetris_name.current_column--;
+				}
+				break;
+			case 1:
+				if(tetris_name.c_flag)
+				{
+					tetris_name.current_column--;
+				}
+				if(tetris_name.cc_flag)
+				{
+					tetris_name.current_column-=2;
+				}
+				break;
+			case 2:
+				if(tetris_name.c_flag)
+				{
+					tetris_name.current_column+=2;
+				}
+				if(tetris_name.cc_flag)
+				{
+					tetris_name.current_column++;
+				}
+				break;
+			case 3:
+				if(tetris_name.c_flag)
+				{
+					tetris_name.current_column++;
+				}
+				if(tetris_name.cc_flag)
+				{
+					tetris_name.current_column+=2;
+				}
+				break;
+		}		
+	}
+}
+
+function rotate_I_test3(tetris_name)
+{
+	if(tetris_name.current_row+tetris_name.temp_tile_bottom <= tetris_height-1)  
+	{
+		if(tetris_name.c_flag)
+		{
+			switch(tetris_name.pre_status)
+			{
+				case 0:
+					if(check_collisioned(tetris_name,1,0))
+					{
+						tetris_name.test3_flag=false;
+					}
+					break;
+				case 1:	//case 1代表從R轉向到2轉向
+					if(check_collisioned(tetris_name,2,0))
+					{
+						tetris_name.test3_flag=false;
+					}
+					break;
+				case 2:	//case 2代表從2轉向到L轉向
+					if(check_collisioned(tetris_name,-1,0))
+					{
+						tetris_name.test3_flag=false;
+					}
+					break;
+				case 3:	//case 3代表從L轉向到0轉向
+					if(check_collisioned(tetris_name,-2,0))
+					{
+						tetris_name.test3_flag=false;
+					}
+					break;
+			}
+		}
+		
+		if(tetris_name.cc_flag)
+		{
+			switch(tetris_name.pre_status)
+			{
+				case 0:
+					if(check_collisioned(tetris_name,2,0))
+					{
+						tetris_name.test3_flag=false;
+					}
+					break;
+				case 1:	//case 1代表從L轉向到2轉向
+					if(check_collisioned(tetris_name,1,0))
+					{
+						tetris_name.test3_flag=false;
+					}
+					break;
+				case 2:	//case 2代表從2轉向到R轉向
+					if(check_collisioned(tetris_name,-2,0))
+					{
+						tetris_name.test3_flag=false;
+					}
+					break;
+				case 3:	//case 3代表從R轉向到0轉向
+					if(check_collisioned(tetris_name,-1,0))
+					{
+						tetris_name.test3_flag=false;
+					}
+					break;
+			}
+		}
+	}
+	else
+	{
+		tetris_name.test3_flag=false;
+	}
+	
+	if(tetris_name.test3_flag)	//可以wall kick
+	{
+		switch(tetris_name.pre_status)
+		{
+			case 0:
+				if(tetris_name.c_flag)
+				{
+					tetris_name.current_column++;
+				}
+				if(tetris_name.cc_flag)
+				{
+					tetris_name.current_column+=2;
+				}
+				break;
+			case 1:
+				if(tetris_name.c_flag)
+				{
+					tetris_name.current_column+=2;
+				}
+				if(tetris_name.cc_flag)
+				{
+					tetris_name.current_column++;
+				}
+				break;
+			case 2:
+				if(tetris_name.c_flag)
+				{
+					tetris_name.current_column--;
+				}
+				if(tetris_name.cc_flag)
+				{
+					tetris_name.current_column-=2;
+				}
+				break;
+			case 3:
+				if(tetris_name.c_flag)
+				{
+					tetris_name.current_column-=2;
+				}
+				if(tetris_name.cc_flag)
+				{
+					tetris_name.current_column--;
+				}
+				break;
+		}		
+	}
+}
+
+function rotate_I_test4(tetris_name)
+{
+	if(tetris_name.current_row+tetris_name.temp_tile_bottom+2 <= tetris_height-1)  
+	{
+		if(tetris_name.c_flag)
+		{
+			switch(tetris_name.pre_status)
+			{
+				case 0:
+					if(check_collisioned(tetris_name,-2,1))
+					{
+						tetris_name.test4_flag=false;
+					}
+					break;
+				case 1:	//case 1代表從R轉向到2轉向
+					if(check_collisioned(tetris_name,-1,-2))
+					{
+						tetris_name.test4_flag=false;
+					}
+					break;
+				case 2:	//case 2代表從2轉向到L轉向
+					if(check_collisioned(tetris_name,2,-1))
+					{
+						tetris_name.test4_flag=false;
+					}
+					break;
+				case 3:	//case 3代表從L轉向到0轉向
+					if(check_collisioned(tetris_name,1,2))
+					{
+						tetris_name.test4_flag=false;
+					}
+					break;
+			}
+		}
+		
+		if(tetris_name.cc_flag)
+		{
+			switch(tetris_name.pre_status)
+			{
+				case 0:
+					if(check_collisioned(tetris_name,-1,-2))
+					{
+						tetris_name.test4_flag=false;
+					}
+					break;
+				case 1:	//case 1代表從L轉向到2轉向
+					if(check_collisioned(tetris_name,-2,1))
+					{
+						tetris_name.test4_flag=false;
+					}
+					break;
+				case 2:	//case 2代表從2轉向到R轉向
+					if(check_collisioned(tetris_name,1,2))
+					{
+						tetris_name.test4_flag=false;
+					}
+					break;
+				case 3:	//case 3代表從R轉向到0轉向
+					if(check_collisioned(tetris_name,2,-1))
+					{
+						tetris_name.test4_flag=false;
+					}
+					break;
+			}
+		}
+	}
+	else
+	{
+		tetris_name.test4_flag=false;
+	}
+	
+	if(tetris_name.test4_flag)	//可以wall kick
+	{
+		switch(tetris_name.pre_status)
+		{
+			case 0:
+				if(tetris_name.c_flag)
+				{
+					tetris_name.current_row++;
+					tetris_name.current_column-=2;
+				}
+				if(tetris_name.cc_flag)
+				{
+					tetris_name.current_row-=2;
+					tetris_name.current_column--;
+				}
+				break;
+			case 1:
+				if(tetris_name.c_flag)
+				{
+					tetris_name.current_row-=2;
+					tetris_name.current_column--;
+				}
+				if(tetris_name.cc_flag)
+				{
+					tetris_name.current_row++;
+					tetris_name.current_column-=2;
+				}
+				break;
+			case 2:
+				if(tetris_name.c_flag)
+				{
+					tetris_name.current_row--;
+					tetris_name.current_column+=2;
+				}
+				if(tetris_name.cc_flag)
+				{
+					tetris_name.current_row+=2;
+					tetris_name.current_column++;
+				}
+				break;
+			case 3:
+				if(tetris_name.c_flag)
+				{
+					tetris_name.current_row+=2;
+					tetris_name.current_column++;
+				}
+				if(tetris_name.cc_flag)
+				{
+					tetris_name.current_row--;
+					tetris_name.current_column+=2;
+				}
+				break;
+		}		
+	}
+}
+
+function rotate_I_test5(tetris_name)
+{
+	if(tetris_name.current_row+tetris_name.temp_tile_bottom+2 <= tetris_height-1)  
+	{
+		if(tetris_name.c_flag)
+		{
+			switch(tetris_name.pre_status)
+			{
+				case 0:
+					if(check_collisioned(tetris_name,1,-2))
+					{
+						tetris_name.test5_flag=false;
+					}
+					break;
+				case 1:	//case 1代表從R轉向到2轉向
+					if(check_collisioned(tetris_name,2,1))
+					{
+						tetris_name.test5_flag=false;
+					}
+					break;
+				case 2:	//case 2代表從2轉向到L轉向
+					if(check_collisioned(tetris_name,-1,2))
+					{
+						tetris_name.test5_flag=false;
+					}
+					break;
+				case 3:	//case 3代表從L轉向到0轉向
+					if(check_collisioned(tetris_name,-2,-1))
+					{
+						tetris_name.test5_flag=false;
+					}
+					break;
+			}
+		}
+		
+		if(tetris_name.cc_flag)
+		{
+			switch(tetris_name.pre_status)
+			{
+				case 0:
+					if(check_collisioned(tetris_name,2,1))
+					{
+						tetris_name.test5_flag=false;
+					}
+					break;
+				case 1:	//case 1代表從L轉向到2轉向
+					if(check_collisioned(tetris_name,1,-2))
+					{
+						tetris_name.test5_flag=false;
+					}
+					break;
+				case 2:	//case 2代表從2轉向到R轉向
+					if(check_collisioned(tetris_name,-2,-1))
+					{
+						tetris_name.test5_flag=false;
+					}				
+					break;
+				case 3:	//case 3代表從R轉向到0轉向
+					if(check_collisioned(tetris_name,-1,2))
+					{
+						tetris_name.test5_flag=false;
+					}
+					break;
+			}
+		}
+	}
+	else
+	{
+		tetris_name.test5_flag=false;
+	}
+	
+	if(tetris_name.test5_flag)	//可以wall kick
+	{
+		switch(tetris_name.pre_status)
+		{
+			case 0:
+				if(tetris_name.c_flag)
+				{
+					tetris_name.current_row-=2;
+					tetris_name.current_column++;
+				}
+				if(tetris_name.cc_flag)
+				{
+					tetris_name.current_row++;
+					tetris_name.current_column+=2;
+				}
+				break;
+			case 1:
+				if(tetris_name.c_flag)
+				{
+					tetris_name.current_row++;
+					tetris_name.current_column+=2;
+				}
+				if(tetris_name.cc_flag)
+				{
+					tetris_name.current_row-=2;
+					tetris_name.current_column++;
+				}
+				break;
+			case 2:
+				if(tetris_name.c_flag)
+				{
+					tetris_name.current_row+=2;
+					tetris_name.current_column--;
+				}
+				if(tetris_name.cc_flag)
+				{
+					tetris_name.current_row--;
+					tetris_name.current_column-=2;
+				}
+				break;
+			case 3:
+				if(tetris_name.c_flag)
+				{
+					tetris_name.current_row--;
+					tetris_name.current_column-=2;
+				}
+				if(tetris_name.cc_flag)
+				{
+					tetris_name.current_row+=2;
+					tetris_name.current_column--;
+				}
+				break;
+		}		
+	}
+}
+
+function ghost_piece(tetris_name)
+{
+	tetris_name.test_flag=true;
+	tetris_name.test_num=0;
+
+	for(var i=0;i<tetris_width;i++)
+	{
+		tetris_name.aggregate_height[i]=0;
+	}
+	
+	/*for(var i=0;i<tetris_height;i++)
+	{
+		space_of_line[i]=tetris_width;
+	}*/
+	
+	for(var i=tetris_name.current_row+1;i<tetris_height;i++)
+	//從現在列的下一列起算
+	//避免有時左右移動的異常顯示
+	{
+		for(var j=0;j<tetris_width;j++)
+		{
+			if(tetris_name.board[i][j] == FIXED && (tetris_height-i)>tetris_name.aggregate_height[j])
+			{
+				tetris_name.aggregate_height[j]=tetris_height-i;
+			}
+			
+			/*if(FIXED == tetris_name.board[i][j])
+			{
+				space_of_line[i]--;
+			}*/
+			
+		}
+	}
+	
+	tetris_name.stop_height=0;
+	//stop_height值是這方塊目前落點會卡在的地方(最高處)
+	for(var i=tetris_name.temp_tile_left;i<=tetris_name.temp_tile_right;i++)
+	{
+		if(tetris_name.stop_height<tetris_name.aggregate_height[tetris_name.current_column+i])
+		{
+			tetris_name.stop_height=tetris_name.aggregate_height[tetris_name.current_column+i];
+		}
+	}
+	
+	tetris_name.stop_height = tetris_height-tetris_name.stop_height-1;
+	
+	for(var k=1;k<4;k++)
+	{
+		for(var i=tetris_name.stop_height-tetris_name.temp_tile_bottom;i<=tetris_name.stop_height;i++)
+		{
+			if(!tetris_name.test_flag)
+			{
+				break;
+			}
+	
+			for(var j=tetris_name.current_column;j<=tetris_name.current_column+tetris_name.temp_tile_right;j++)
+			{			
+				if(tetris_name.temp_tile[i-tetris_name.stop_height+tetris_name.temp_tile_bottom][j-tetris_name.current_column] != 0 && tetris_name.temp_tile[i-tetris_name.stop_height+tetris_name.temp_tile_bottom][j-tetris_name.current_column] != undefined)
+				{
+					//ctx.strokeStyle = 'red';
+					//ctx.strokeRect(250+30*j,100+25*(i),30,25);
+				
+					if(i+k<tetris_height)
+					{
+						if(FIXED == tetris_name.board[i+k][j])
+						{
+							tetris_name.test_flag=false;
+							tetris_name.test_num=k-1;
+							break;
+						}
+					}
+					else
+					{
+						tetris_name.test_flag=false;
+						tetris_name.test_num=k-1;
+						break;
+					}
+				}
+			}
+		}
+		
+		if(!tetris_name.test_flag)
+		{
+			break;
+		}
+	
+		tetris_name.test_flag=k;
+	}
+	
+	for(var i=tetris_name.stop_height-tetris_name.temp_tile_bottom+tetris_name.test_num;i<=tetris_name.stop_height+tetris_name.test_num;i++)
+	{
+		for(var j=tetris_name.current_column;j<=tetris_name.current_column+tetris_name.temp_tile_right;j++)
+		{
+			if(tetris_name.temp_tile[i-tetris_name.stop_height+tetris_name.temp_tile_bottom-tetris_name.test_num][j-tetris_name.current_column] != 0 && tetris_name.temp_tile[i-tetris_name.stop_height+tetris_name.temp_tile_bottom-tetris_name.test_num][j-tetris_name.current_column] != undefined)			
+			{
+				ctx.fillStyle="#FF0000";
+				//ctx.fillRect(tile_center_left+tile_width*j,tile_center_top+tile_height*i,tile_width,tile_height);
+				ctx.fillRect(tetris_name.axis+tile_width*j,25+tile_height*i,tile_width,tile_height);
+			}
+		}
+	}
+}
+
+function hard_drop(tetris_name)
+{
+	tetris_name.current_row=tetris_name.stop_height-tetris_name.temp_tile_bottom+tetris_name.test_num;
+	
+	for(var i=tetris_name.current_row;i<=tetris_name.current_row-tetris_name.temp_tile_bottom;i++)
+	{
+		for(var j=tetris_name.current_column;j<=tetris_name.current_column+tetris_name.temp_tile_right;j++)
+		{
+			if(tetris_name.temp_tile[i-tetris_name.current_row][j-tetris_name.current_column] != 0 && tetris_name.temp_tile[i-tetris_name.current_row][j-tetris_name.current_column] != undefined)
+			{
+				tetris_name.board[i][j] += 10;
+			}
+		}
+	}
+}
+
+function parse_text()
+    {
+	    if(text_array[i])
+        {
+            temp_array=text_array[i].split(' ');
+            switch(temp_array[0])
+            {
+                case ":#:b":
+                    //document.documentElement.style="background:url("+ temp_array[1] +") no-repeat center center fixed; min-height:100%; background-size:cover; z-index:-1;";
+                    game_image[0] = temp_array[1];
+					requestAnimationFrame(re_draw_game);
+                    i++;
+                    break;
+                case ":#:c":
+                    if(temp_array[1].match("none")) 
+                    //這邊用match函式來做是因為拆文件時用'\n'拆,之後再用' '拆,也就是若用字串相等判斷 得下temp_array[1] == "none\r"才行
+                    {
+						game_image[2]=null;
+                    }
+                    else
+                    {
+                        game_image[2] = temp_array[1];
+                    }
+					requestAnimationFrame(re_draw_game);
+                    i++;
+                    break;
+                case ":#:l":
+                    if(temp_array[1].match("none"))
+                    {
+						game_image[1]=null;
+                    }
+                    else
+                    {
+                        game_image[1] = temp_array[1];
+                    }
+					requestAnimationFrame(re_draw_game);
+                    i++;
+                    break;
+                case ":#:r":
+                    if(temp_array[1].match("none"))
+                    {
+						game_image[3]=null;
+                    }
+                    else
+                    {
+                        game_image[3] = temp_array[1];
+                    }
+					requestAnimationFrame(re_draw_game);
+                    i++;
+                    break;
+                case ":#:m":
+                    if(temp_array[1].match("none"))
+                    {
+						music_element.pause();
+                    }
+                    else
+                    {
+                        music_element.pause();
+                        music_element.setAttribute("src",temp_array[1]);
+					    localStorage.auto_save_music=temp_array[1];
+                        music_element.setAttribute("loop","true");
+                        music_element.play();
+                    }
+                    i++;
+                    break;
+                case ":#:s":
+                    sound_element.setAttribute("src",temp_array[1]);
+                    sound_element.play();
+                    i++;
+                    break;
+                case ":#:o":
+				    already_draw_option_flag=false;
+                    temp_option_array.push(temp_array[1]);
+                    option_count++;
+                    i++;
+                    break;
+                case ":#:e":
+                    match_option_flag=false;
+					if(!already_draw_option_flag)
+					{
+					    requestAnimationFrame(re_draw_option);
+                    }
+                    break;
+                case ":#:t":
+                    if(match_option_flag)
+                    {
+                        while(!text_array[i].match(/:#:z/)) 
+                        {
+                            i++;
+                        }
+                    }
+                    else
+                    {
+                        while(!text_array[i].match(selected_option))
+                        {
+                            i++;
+                        }
+                        match_option_flag=true;
+                        i++;
+                    }
+                    break;
+                case ":#:z":
+                    clear_array(option_array);
+                    clear_array(temp_option_array);
+                    selected_option=null;
+                    match_option_flag=false;
+                    i++;
+                    break;
+                case ":#:f":
+                    clear_array(text_array);
+                    clear_array(name_match);
+                    clear_array(head_match);
+
+                    $(document).ready(
+                        function ()
+                        {
+                            $.get(temp_array[1], function(data)
+                            {
+                                localStorage.auto_save_file=temp_array[1];
+
+                                text_array.push(data);
+                                text_array=text_array.toString().split('\n');
+                                text_array[0]=text_array[0].replace(/:#:p/g,localStorage.auto_save_playername);
+                                temp_array=text_array[0].split(' ');
+
+                                for(var k=0;k<temp_array.length;k++)
+                                {
+                                    name_match.push(temp_array[k]);
+                                }
+
+                                temp_array=text_array[1].split(' ');
+ 
+                                for(var k=0;k<temp_array.length;k++)
+                                {
+                                    head_match.push(temp_array[k]);
+                                }
+                            },'text');
+                        });
+                    i=2;
+                    break;
+                default:
+                    if(!display_end_flag)
+                    {
+                        localStorage.auto_save_line=i;
+
+                        if(parseInt(temp_array[0]) == -1)
+                        {
+                            ch_flag=false;
+							game_image[4]= null;
+							game_image[5] = null;
+						    game_image[6] = "text_border.jpg";
+							game_text[0] = null;
+                        }
+                        else
+                        {
+                             ch_flag = true;
+
+                             if(ch_flag && !already_flag)
+                             {
+                                 if(isNaN(parseInt(temp_array[0])))
+                                 {
+									 game_image[4]=null;
+									 game_image[5] = "name_border.jpg";
+	                                 game_image[6] = "text_border.jpg";
+                                                                          
+                                     temp_array[0]=temp_array[0].replace(/:#:p/g,localStorage.auto_save_playername);
+									 game_text[0]=temp_array[0];
+                                 }
+                                 else
+                                 {
+									 game_text[0]=name_match[parseInt(temp_array[0])];
+									 
+                                     game_image[4] = head_match[parseInt(temp_array[0])];
+									 game_image[5] = "name_border.jpg";
+	                                 game_image[6] = "text_border.jpg";
+
+                                     already_flag=true;
+                                 }    
+                             }
+                        }
+
+                        display_interval -= localStorage.display_speed;
+
+                        if(full_display_flag)
+                        {
+                             while(h < temp_array.length)
+                             {
+                                 while(temp_array[h][j])
+                                 {
+                                     temp_array[h]=temp_array[h].replace(/:#:p/g,localStorage.auto_save_playername);
+									 game_text[h] += temp_array[h][j];
+                                     j++;
+                                 }
+
+                                 j=0;
+                                 h++;
+
+                                 full_display_flag=false;
+                                 display_interval=30;
+                                 already_flag=false;
+                             }
+
+                             display_end_flag=true;
+                             h=1;
+                         }
+                         else if(display_interval <= 0)
+                         {
+                              if(h < temp_array.length)
+                              {
+                                  if(temp_array[h][j])
+                                  {
+                                       temp_array[h]=temp_array[h].replace(/:#:p/g,localStorage.auto_save_playername);
+									   game_text[h] +=temp_array[h][j];
+                                       j++;
+                                  }
+                                  else
+                                  {
+                                       j=0;
+                                       h++;
+                                  }
+                              }
+                              else
+                              {
+                                  already_flag=false;
+                                  display_end_flag=true;
+                                  h=1;
+                              }
+                              display_interval=30;
+                          }
+						  window.requestAnimationFrame(re_draw_game);
+                    }
+            }
+        }
+        else
+        {
+		    game_text[1]="遊戲已破關!!";
+			game_text[2]=" ";
+			game_text[3]=" ";
+			window.requestAnimationFrame(re_draw_game);
+        }
+    }
+
+function re_draw_game()
+    {
+		var background_image= new Image();
+		background_image.src=game_image[0];
+        background_image.onload = function(){ctx.drawImage(background_image,0,0,canvas_element.width,canvas_element.height);m++;};
+		
+        var cl_image= new Image();
+        cl_image.src=game_image[1];
+        cl_image.onload=function(){ctx.drawImage(cl_image,canvas_element.width*20/100-cl_image.width/2,100);m++;};
+
+        var cc_image= new Image();
+        cc_image.src=game_image[2];
+        cc_image.onload=function(){ctx.drawImage(cc_image,canvas_element.width*50/100-cc_image.width/2,100);m++;};
+
+
+        var cr_image=new Image();
+        cr_image.src=game_image[3];
+		cr_image.onload=function(){ctx.drawImage(cr_image,canvas_element.width*80/100-cr_image.width/2,100);m++;};
+
+
+        var head_image= new Image();
+        head_image.src=game_image[4];
+		head_image.onload=function(){ctx.drawImage(head_image,50,380);m++;};
+
+
+        var name_block_image= new Image();
+        name_block_image.src=game_image[5];
+		name_block_image.onload=function(){ctx.drawImage(name_block_image,250,380,300,50);m++;};
+
+
+        var text_block_image= new Image();
+        text_block_image.src=game_image[6];
+		text_block_image.onload=function()
+		{
+		    ctx.drawImage(text_block_image,250,446,1000,136);
+		
+		    ctx.font = "32px 新細明體";
+		    if(game_text[0])
+                ctx.fillText(game_text[0],280,415);
+		    if(game_text[1])
+		        ctx.fillText(game_text[1],260,480);
+		    if(game_text[2])
+		        ctx.fillText(game_text[2],260,520);
+		    if(game_text[3])
+		        ctx.fillText(game_text[3],260,560);
+			m++;
+		};
+
+        /*
+		if(menu_flag)
+		{
+		    var save_image= new Image();
+            save_image.src="menu_save.jpg";
+            save_image.onload=function(){ctx.drawImage(save_image,0,0);};
+			var load_image= new Image();
+            load_image.src="menu_load.jpg";
+            load_image.onload=function(){ctx.drawImage(load_image,210,0);};
+            var config_image= new Image();
+            config_image.src="menu_config.jpg";
+            config_image.onload=function(){ctx.drawImage(config_image,420,0);};
+            var back_image= new Image();
+            back_image.src="menu_back.jpg";
+            back_image.onload=function(){ctx.drawImage(back_image,630,0);};
+			window.addEventListener("click",test3,true);
+		}
+		else
+		{
+		    window.removeEventListener("click",test3,true);
+		}
+		*/
+		
+    }
+	
+function tetris_AI(tetris_name,AI_name)
+{
+	//var test_obeject = AI_select(tetris_name);
+
+	/*for(var i=0;i<tetris_width;i++)
+	{
+		AI_name.AI_aggregate_height[i]=0;
+	}
+	
+	for(var i=0;i<tetris_height;i++)
+	{
+		AI_name.AI_space_of_line[i]=tetris_width;
+	}
+	
+	for(var i=0;i<tetris_height;i++)
+	{
+		for(var j=0;j<tetris_width;j++)
+		{
+			if(tetris_name.board[i][j] == FIXED && (tetris_height-i)>AI_name.AI_aggregate_height[j])
+			{
+				AI_name.AI_aggregate_height[j]=tetris_height-i;
+			}
+			
+			if(tetris_name.board[i][j] == FIXED)
+			{
+				AI_name.AI_space_of_line[i]--;
+			}
+			
+		}
+	}
+	
+	if(AI_name.AI_turn_end_flag)
+	{
+		for(var i=tetris_height-1;i>0;i--)
+		{
+			if(AI_name.AI_space_of_line[i]==1)
+			{
+				for(var j=0;j<tetris_width;j++)
+				{
+					if(tetris_name.board[i][j]==0 && AI_name.AI_aggregate_height[j] < tetris_height-i)
+					{
+						//如果有空格,而且上方沒有遮蔽物
+						//那就可以把一些方塊轉豎放在那
+						AI_name.AI_here=j;
+					}
+				}
+			}
+		}
+	
+		switch(tetris_name.present_tile)
+		{
+			case 1:	//I   長條形只有兩種狀況要考量
+				
+				if(AI_name.AI_here > -1)	//處理僅有一格的狀況
+				{
+					AI_name.AI_action_list.push("o");
+					//轉成豎的
+				
+					var offset=3-AI_name.AI_here;
+					//offset,偏移,決定要移動的方向與距離
+					
+					if(offset>0)
+					{
+						for(i=0;i<offset;i++)
+						{
+							AI_name.AI_action_list.push("l");
+						}
+					}
+					else if(offset<0)
+					{
+						for(i=0;i<-offset;i++)
+						{
+							AI_name.AI_action_list.push("r");
+						}
+					}
+					
+					AI_name.AI_turn_end_flag=false;
+					AI_name.AI_here=-1;
+				}
+				break;
+			case 2:	//O  正方形只有1種狀況要考量
+				break;
+			case 3:	//T  卜字形有4種狀況要考量
+				break;
+			case 4:	//S   兩種狀況,同Z型
+				break;
+			case 5:	//Z
+				break;
+			case 6:	//J   四種狀況,同L型
+				break;
+			case 7:	//L
+				break;
+		}
+	}
+	else
+	{
+		switch(AI_name.AI_action_list[AI_name.AI_action_order])
+		{
+			case "r":
+				right_move(tetris_name);
+				break;
+			case "l":
+				left_move(tetris_name);
+				break;
+			case "o":
+				rotate_clockwise(tetris_name);
+				break;
+		}
+		
+		AI_name.AI_action_order++;
+	}*/
+	
+	/*if(AI_name.AI_turn_end_flag)
+	{
+	
+	}
+	else
+	{
+		switch(AI_name.AI_action_list[AI_name.AI_action_order])
+		{
+			case "r":
+				right_move(tetris_name);
+				break;
+			case "l":
+				left_move(tetris_name);
+				break;
+			case "o":
+				rotate_clockwise(tetris_name);
+				break;
+		}
+		
+		AI_name.AI_action_order++;
+	}*/
+}
+
+function tetris_AI_reset(tetris_name,AI_name)
+{
+	AI_name.AI_turn_end_flag=true;
+	AI_name.AI_action_order=0;
+	
+	var temp=AI_name.AI_action_list.length;
+	//避免陣列結束判斷條件隨著迴圈進行而改動
+	
+	for(var i=0;i<temp;i++)
+	{
+		AI_name.AI_action_list.pop();
+	}
+}
+
+function AI_check_collisioned(tetris_name,AI_name,x_axis,y_axis,rotate_status)
+{
+	//決定小俄羅斯方塊左上角後(由x,y決定)
+	//對4*4方塊逐一比對
+	
+	/*for(var i=y_axis;i<y_axis+4;i++)
+	{	
+		for(var j=x_axis;j<x_axis+4;j++)
+		{
+			if(all_tetris_enum[rotate_status][tetris_name.present_tile][i-y_axis][j-x_axis] != 0 && all_tetris_enum[rotate_status][tetris_name.present_tile][i-y_axis][j-x_axis] != undefined)
+			{	
+				if(i >= tetris_height)
+				{
+					return true;
+				}
+				
+				if(j >= tetris_width)
+				{
+					return true;
+				}
+				
+				//↑修正超出邊界時用
+				//理論上來說j,也就是橫軸應該也有同樣問題
+				//但網頁沒報錯就先放著
+				//(其實原先報錯感覺上也沒影響執行結果,
+				//但還是修正下避免以後可能會有影響)
+			
+				if(FIXED == tetris_name.board[i][j] || undefined == tetris_name.board[i][j])
+				{
+					return true;
+				}
+			}
+		}
+	}
+	
+	return false;*/
+	
+	for ( var i = 0; i < 4; i++ ) {
+            for ( var j = 0; j < 4; j++ ) {
+                if (all_tetris_enum[rotate_status][tetris_name.present_tile][i][j] == tetris_name.present_tile)
+				{
+                    //if (x_axis + j < 0 || x_axis + j >= tetris_width || y_axis + i < 0 || y_axis + i >= tetris_height )
+                    if (x_axis + j < 0 || x_axis + j >= tetris_width || y_axis + i < 0 || y_axis + i >= tetris_height )
+					{
+                        return true;
+                    }
+                    if ( tetris_name.board[y_axis + i][x_axis + j] == FIXED )
+					{
+                        return true;
+                    }
+                }
+				
+				if(all_tetris_enum[rotate_status][tetris_name.present_tile][i][j] == undefined)
+				{
+					return true;
+				}
+            }
+        }
+		
+	return false;
+}
+
+//局勢判斷(也就是計算評估函數)
+//所需內容:
+//	1.現在操縱的方塊	tetris_name.present_tile
+//	2.移動後的版面	temp_board也是bkBoards
+//	3.行動時的小俄羅斯方塊資訊   step.x step.y step.rotate_status
+
+function AI_evaluate(tetris_name,temp_board,shape)
+{
+	
+	/*if(O==tetris_name.present_tile)
+	{
+		g_num++;
+		console.log(g_num);
+		console.log("下落高度"+AI_landingHeight(tetris_name,temp_board,shape));
+		console.log("消行數與方塊數乘積"+AI_rowsEliminated(tetris_name,temp_board,shape));
+		console.log("列轉換次數"+AI_rowTransitions(tetris_name,temp_board,shape));
+		console.log("行轉換次數"+AI_colTransitions(tetris_name,temp_board,shape));
+		console.log("直排洞數"+AI_emptyHoles(tetris_name,temp_board,shape));
+		console.log("疊加井之數字"+AI_wellNums(tetris_name,temp_board,shape));
+	}*/	
+
+	return (-4.500158825082766) * AI_landingHeight(tetris_name,temp_board,shape)          // 下落高度
+            + (3.4181268101392694) * AI_rowsEliminated(tetris_name,temp_board,shape)      // 消行个数
+            + (-3.2178882868487753) * AI_rowTransitions(tetris_name,temp_board,shape)            // 行变换
+            + (-9.348695305445199) * AI_colTransitions(tetris_name,temp_board,shape)             // 列变化
+            + (-7.899265427351652) * AI_emptyHoles(tetris_name,temp_board,shape)                 // 空洞个数
+            + (-3.3855972247263626) * AI_wellNums(tetris_name,temp_board,shape);					// 井数
+}
+
+function AI_landingHeight(tetris_name,temp_board,shape)
+//計算下落高度
+{
+	for( var i = 0; i < 4; i++ )
+	{
+        for ( var j = 0; j < 4; j++ )
+		{
+			if (tetris_name.present_tile == all_tetris_enum[shape.rotate_status][tetris_name.present_tile][i][j]) 
+			{
+				return tetris_height - (shape.y + i);
+			}
+        }
+    }
+}
+
+function AI_rowsEliminated(tetris_name,temp_board,shape)
+{
+	var eliminatedNum = 0;
+    var eliminatedGridNum = 0;
+
+	for ( var i = 0; i < tetris_height; i++ )
+	{
+		var flag = true;
+		
+		for ( var j = 0; j < tetris_width; j++ )
+		{
+			if (0 == temp_board[i][j] )
+			{
+                    flag = false;
+                    break;
+            }
+        }
+		
+		if ( flag === true )
+		{
+			eliminatedNum++;
+			
+			if ( i >= shape.y && i < shape.y + 4 )
+			{
+				for ( var s = 0; s < 4; s++ )
+				{
+					if (tetris_name.present_tile == all_tetris_enum[shape.rotate_status][tetris_name.present_tile][i - shape.y][s] )
+					{
+						eliminatedGridNum++;
+					}
+                }
+            }
+        }
+    }
+	
+	return eliminatedNum * eliminatedGridNum;
+}
+
+function AI_rowTransitions(tetris_name,temp_board,shape)
+{
+	//PierreDellacherie方式
+	//检测一行，当该行中某个方格从有方块到无方块
+	//（或无方块到有方块），
+    //视为一次变换。游戏池边界算作有方块。
+	//行变换从一定程度上反映出一行的平整程度，越平整值越小
+    //该指标为所有行的变换数之和
+
+	//每個空白列,均有2變換(最低值40,所以行變換最低值20)
+	//若非空白列,緊鄰邊界的也是2變換
+	//所以正方形,最左側、最右側各有四種旋轉狀態
+	//共8個列變換值應該是40才對
+	//其餘因為在中間,所以會是44
+	//○●○	4*2+2*18
+	
+	//0 != 8   列變換+1  prevColor=0
+	//8 != 0   列變換+1  prevColor=8
+	//0 != 8   列變換+1  prevColor=0
+	//最後prevColor=0  列變換再加1
+	
+	//目前程式不知怎麼,正方形列變換值是44,48
+	//找到原因了,傳統版俄羅斯方塊
+	//跟競技版俄羅斯方塊高度不同
+	
+	var totalTransNum = 0;
+	for ( var i = 0; i < tetris_height; i++ )
+	{
+		var nowTransNum = 0;
+		var prevColor = 8;
+		
+		for ( var j = 0; j < tetris_width; j++ )
+		{
+			if ( temp_board[i][j] != prevColor )
+			{
+				nowTransNum++;
+				prevColor = temp_board[i][j];
+			}
+		}
+		
+		if ( prevColor === 0 )
+		{
+			nowTransNum++;
+		}
+		
+		totalTransNum += nowTransNum;
+		
+	}
+
+	return totalTransNum;
+}
+
+function AI_colTransitions(tetris_name,temp_board,shape)
+{
+	var totalTransNum = 0;
+	
+	for ( var i = 0; i < tetris_width; i++ )
+	{
+		var nowTransNum = 0;
+		var prevColor = 8;
+		
+		for ( var j = 0; j < tetris_height; j++ )
+		{
+			if ( temp_board[j][i] != prevColor )
+			{
+				nowTransNum++;
+				prevColor = temp_board[j][i];
+			}
+		}
+		
+		if ( prevColor === 0 )
+		{
+			nowTransNum++;
+		}
+		
+		totalTransNum += nowTransNum;
+		
+	}
+
+	return totalTransNum;
+}
+
+function AI_emptyHoles(tetris_name,temp_board,shape)
+{
+	var totalEmptyHoles = 0;
+	
+    for ( var i = 0; i < tetris_width; i++ )
+	{
+		//由左至右,一次掃一行
+		//再由上至下,有掃到阻礙時,停下
+		//再開始計算空洞數
+		//也就是說,空洞只要看一行就能計算
+		//不是嚴格上被包圍的洞
+		//也許是,若從頭到尾都是俄羅斯方塊AI操作的話
+		//列有空洞基本上就是空洞現象
+		//若要做AI託管功能這邊也許要注意下
+	
+		var j = 0;
+		var emptyHoles = 0;
+		
+		
+		for ( ; j < tetris_height; j++ )
+		{
+			if ( temp_board[j][i] === FIXED )
+			{
+				j++;
+				break;
+			}
+		}
+		
+		for ( ; j < tetris_height; j++ )
+		{
+			if ( temp_board[j][i] === 0 )
+			{
+				emptyHoles++;
+			}
+		}
+		
+		totalEmptyHoles += emptyHoles;
+	}
+	
+	return totalEmptyHoles;
+}
+
+function AI_wellNums(tetris_name,temp_board,shape)
+{
+	/*
+	井指两边皆有方块的空列。
+	该指标为所有井的深度"连加"到1再求总和
+    注意一列中可能有多个井，如图：
+    ■□□
+    ■□■
+    ■□■
+    ■■■
+    ■□■
+    ■□■
+    ■□■
+    中间一列为井，深度连加到一的和为 (2+1)+(3+2+1)=9
+	
+	看起來就像是要用迴圈處理連加
+	(結果是直接用等差級數公式解,有時會忘記!!)
+	*/
+	
+	var i = 0, j = 0, wellDepth = 0, tDepth = 0;
+	
+	//tDepth是個暫時變數,所以叫t
+	//用來確認井兩邊的高度
+	//而在最左邊跟最右邊時
+	//只要計算第二排跟倒數第二排的高度即可
+
+	var totalWellDepth = 0;
+	
+	// *) 获取最左边的井数
+	wellDepth = 0;
+	tDepth = 0;
+	
+	for ( j = 0; j < tetris_height; j++ )
+	{
+		if ( temp_board[j][0] === 0 && temp_board[j][1] === FIXED )
+		{
+			tDepth++;
+		} 
+		else
+		{
+			wellDepth += tDepth * (tDepth + 1) / 2;
+			
+			//↑等差級數公式,(上底加下底乘高)/2
+			//也可以說是梯形公式
+			//因為就兩兩相配,像1加到10
+			//1跟10配一對 11  然後 2跟9配一對 11這樣處理
+			tDepth = 0;
+		}
+	}
+	
+	wellDepth += tDepth * (tDepth + 1) / 2;
+	totalWellDepth += wellDepth;
+
+	// *) 获取中间的井数
+	wellDepth = 0;
+	
+	for ( i = 1; i < tetris_width - 1; i++ )
+	//因為第二排跟倒數第二排的井要另外算
+	//所以i的上下界有些調整
+	{
+		tDepth = 0;
+		
+		for ( j = 0; j < tetris_height; j++ )
+		{
+			if ( temp_board[j][i] === 0 && temp_board[j][i - 1] === FIXED && temp_board[j][i + 1] === FIXED )
+			//中間為空,兩邊等高才算井
+			{
+				tDepth++;
+			} 
+			else 
+			{
+				wellDepth += tDepth * (tDepth + 1) / 2;
+				tDepth = 0;
+			}
+		}
+		
+		wellDepth += tDepth * (tDepth + 1) / 2;
+		
+		//因為一行可能有多個井,所以要加總
+	}
+	
+	totalWellDepth += wellDepth;
+
+	// *) 获取最右边的井数
+	wellDepth = 0;
+	tDepth = 0;
+	
+	for ( j = 0; j < tetris_height; j++ )
+	{
+		if ( temp_board[j][tetris_width - 1] === 0 && temp_board[j][tetris_width - 2] === FIXED )
+		//陣列是從0開始算
+		//因此tetris_width正好超過陣列索引
+		//-1的話是最右側,最右側為空才可能有井
+		//-2的話就是倒數第二排,要有方塊才有機會產生井
+		//所以兩者用AND(且)運算
+		{
+			tDepth++;
+		} 
+		else
+		{
+			wellDepth += tDepth * (tDepth + 1) / 2;
+			tDepth = 0;
+		}
+	}
+		
+	wellDepth += tDepth * (tDepth + 1) / 2;
+	
+	totalWellDepth += wellDepth;
+	
+	//其實這邊直接return wellDepth好像也可以
+	//不過這樣寫比較清楚吧
+
+	return totalWellDepth;
+}
+
+function AI_applyAction2Data(tetris_name,tx, ty, rotate_status)
+{
+	var temp_board=[];
+	
+	//陣列初始化
+	for(var i=0;i<tetris_height;i++)
+	{
+		temp_board[i]=[];
+	
+		for(var j=0;j<tetris_width;j++)
+		{
+			if(0 != tetris_name.board[i][j])
+			{
+				temp_board[i][j]=FIXED;
+			}
+			else
+			{
+				temp_board[i][j]=0;
+			}
+		}
+	}
+	
+	for ( i = 0; i < 4; i++ )
+	{
+		for (  j = 0; j < 4; j++ )
+		{
+			if ( all_tetris_enum[rotate_status][tetris_name.present_tile][i][j] === tetris_name.present_tile )
+			{
+				if (tx + j < 0 || tx + j >= tetris_width || ty + i < 0 || ty + i >= tetris_height)
+				{
+					continue;
+                }
+				
+				temp_board[ty + i][tx + j] = FIXED;
+			}
+		}
+	}
+	
+	return temp_board;
+}
+
+function AI_select(tetris_name,AI_name)
+{
+	//目前正方形方塊計算分數有14個地方不同
+	//雖然僅是計算順序不同,但落點有些奇怪
+	//理論上第一個方塊會選列變換值較小的
+	//也就是緊靠邊界才對
+	//目前似乎會有1格的誤差
+	//可能是在移動時有錯誤
+
+	var bestMove = null;
+	var bestScore = -1000000;
+
+	// 1) 生成所有可行的落点, 以及对应的路径线路
+	var allMoves = AI_generate(tetris_name, AI_name);
+
+	// 2) 遍历每个可行的落点, 选取最优的局面落点
+	for ( var i = 0; i < allMoves.length; i++ )
+	{
+		var step = allMoves[i].last;
+
+		//var shapeArrs = shape.shapes;
+		//shapeArrs對應到這程式的tetris_name.present_tile
+		
+		//var bkBoards = tetrisUnit.applyAction2Data(step.x, step.y, shapeArrs[step.idx]);
+		var bkBoards = AI_applyAction2Data(tetris_name,step.x, step.y, step.rotate_status);
+
+		// 2.1) 对每个潜在局面进行评估
+		var tscore = AI_evaluate(tetris_name,bkBoards,{x:step.x, y:step.y, rotate_status:step.rotate_status});
+		
+		if( O == tetris_name.present_tile)
+		{
+			console.log(tscore);
+		}
+		
+		// 2.2) 选取更新最好的落点和路径线路
+		if ( bestMove === null || tscore > bestScore )
+		{
+			bestScore = tscore;
+			bestMove = allMoves[i].moves;
+		}
+    }
+
+	// 3) 返回最优可行落点, 及其路径线路
+	return {score:bestScore, action_moves:bestMove};
+}
+
+function check_collisioned(tetris_name,x_offset,y_offset)
+{
+	for(var i=tetris_name.current_row;i<=tetris_name.current_row+tetris_name.temp_tile_bottom;i++)
+	{
+		for(var j=tetris_name.current_column;j<=tetris_name.current_column+tetris_name.temp_tile_right;j++)
+		{			
+			if(tetris_name.temp_tile[i-tetris_name.current_row][j-tetris_name.current_column] != 0 && tetris_name.temp_tile[i-tetris_name.current_row][j-tetris_name.current_column] != undefined)
+			{
+				if(FIXED == tetris_name.board[i+y_offset][j+x_offset])
+				{
+					return true;
+				}
+			}
+		}
+	}
+	
+	return false;
+}
+
+function AI_generate(tetris_name,AI_name)
+{
+	var keymapFunc = function(x, y, rotate_status) {
+        return "" + x + ":" + y + ":" + rotate_status;
+    }
+ 
+    var moveMapFunc = function(step) {
+        return {x:step.x, y:step.y, rotate_status:step.rotate_status};
+    }
+
+	var results = [];
+	
+	
+	var occupy = {};
+	//occupy是空物件,用來判斷碰撞用
+ 
+    var actionQueues = [];
+	
+	actionQueues.push({
+						x:tetris_name.current_column,
+						y:tetris_name.current_row, 
+						rotate_status:tetris_name.present_status,
+						prev:-1
+					});
+					
+    occupy[keymapFunc(tetris_name.current_column, tetris_name.current_row,tetris_name.present_status)] = true;
+ 
+    var head = 0; 
+	
+	/*
+	var step = actionQueues[head];
+ 
+	var tx = step.x - 1;
+    var ty = step.y;
+    var trs = step.rotate_status;
+ 
+	console.dir(occupy);
+	var key = keymapFunc(tx, ty, trs);
+	console.log(!occupy.hasOwnProperty(key));
+	*/
+	
+    while ( head < actionQueues.length )  {
+	
+        var step = actionQueues[head];
+ 
+		// 2). 向左移动一步
+		var tx = step.x - 1;
+        var ty = step.y;
+        var trs = step.rotate_status;
+		
+        if ( !AI_check_collisioned(tetris_name,AI_name,tx,ty,trs) ) {
+            var key = keymapFunc(tx, ty, trs);
+
+            if ( !occupy.hasOwnProperty(key) ) {
+                actionQueues.push({x:tx, y:ty, rotate_status:trs, prev:head});
+                occupy[key] = true;
+            }
+        }
+ 
+        // 2). 向右移动一步
+        tx = step.x + 1;
+        ty = step.y;
+        trs = step.rotate_status;
+		
+        if ( !AI_check_collisioned(tetris_name,AI_name,tx,ty,trs) ) {
+            var key = keymapFunc(tx, ty, trs);
+            if ( !occupy.hasOwnProperty(key) ) {
+                actionQueues.push({x:tx, y:ty, rotate_status:trs, prev:head});
+                occupy[key] = true;
+            }
+        }
+ 
+        // 3). 旋转一步
+        tx = step.x;
+        ty = step.y;
+        trs = (step.rotate_status + 1) % 4;
+		
+        if ( !AI_check_collisioned(tetris_name,AI_name,tx,ty,trs) ) {
+            var key = keymapFunc(tx, ty, trs);
+            if ( !occupy.hasOwnProperty(key) ) {
+                actionQueues.push({x:tx, y:ty, rotate_status:trs, prev:head});
+                occupy[key] = true;
+            }
+        }
+ 
+        // 4). 向下移动一步
+        tx = step.x;
+        ty = step.y + 1;
+        trs = step.rotate_status;
+		
+        if ( !AI_check_collisioned(tetris_name,AI_name,tx,ty,trs) ) {
+            var key = keymapFunc(tx, ty, trs);
+            if ( !occupy.hasOwnProperty(key) ) {
+                actionQueues.push({x:tx, y:ty, rotate_status:trs, prev:head});
+                occupy[key] = true;
+            }
+        } else {
+ 
+            // *) 若不能向下了, 则为方块的一个终结节点.
+            var tmpMoves = [];
+			
+            tmpMoves.push(moveMapFunc(step));
+			
+            var tprev = step.prev;
+			
+            while ( tprev != -1 )
+			{
+                tmpMoves.push(moveMapFunc(actionQueues[tprev]));
+                tprev = actionQueues[tprev].prev;
+            }
+			
+            tmpMoves.reverse();
+ 
+            results.push({last:step, moves:tmpMoves});
+        }
+		
+        head++;
+    }
+
+    return results;	
+	
+}
+
+function tetris_AI_run(tetris_name,AI_name,action_moves)
+//這段應該要在迴圈,應該最好是計時器內才對
+{
+	console.dir(action_moves);
+
+	if(action_moves.length > 0)
+	{
+		/*
+		tetris_name.current_column=action_moves[0].x;
+		tetris_name.current_row = action_moves[0].y;
+		tetris_name.present_status = action_moves.rotate_status;
+		這樣寫會有問題
+		*/
+		
+		//if(tetris_name.current_column>action_moves[0].x-tetris_name.temp_tile_left)
+		if(tetris_name.current_column>action_moves[0].x)
+		{
+			left_move(tetris_name);
+		}
+		else if(tetris_name.current_column<action_moves[0].x)
+		//if(tetris_name.current_column < action_moves[0].x-tetris_name.temp_tile_left)
+		{
+			right_move(tetris_name);
+		}
+		else if(tetris_name.present_status != action_moves[0].rotate_status)
+		{
+			rotate_clockwise(tetris_name);
+			//因為傳統俄羅斯方塊只能順時針旋轉
+			//而這用的是傳統俄羅斯方塊AI
+			//(也就是目前AI不會運用wall kick機制)
+		}
+		else if(tetris_name.current_column == action_moves[1].x)
+		//檢測下一個,若x座標相等的話即可瞬落
+		//也就是y座標在這函式中其實是用不到的
+		{
+			hard_drop(tetris_name);
+			action_moves.splice(0,action_moves.length);
+
+			return;
+		}
+		
+		action_moves.splice(0,1);
+	}
+}
+
+function tetris_AI_switch(AI_name)
+{
+	if(AI_name.AI_enable)
+	{
+		AI_name.AI_enable = false;
+	}
+	else
+	{
+		AI_name.AI_enable = true;
+	}
+}
+
+function game_over()
+//這邊可能需要改,目前是一邊輸兩邊一起停
+{
+	alert("遊戲結束");
+	clearInterval(down_timer_P1);
+	clearInterval(down_timer_P2);
+	document.removeEventListener("keydown",function(e){keydown_related_P1(e,tetris_AI_P1);},false);
+	document.removeEventListener("keydown",function(e){keydown_related_P1(e,tetris_AI_P2);},false);
+}
+
+</script>
+<body>
+</body>
+</html>

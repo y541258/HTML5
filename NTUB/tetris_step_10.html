@@ -1,0 +1,2963 @@
+<!DOCTYPE>
+<meta charset="utf-8"> 
+<html>
+<head>
+</head>
+
+<body>
+<canvas id="canvas" width="800" height="600" ></canvas>
+<script>
+
+var canvas_element = document.getElementById("canvas");
+var ctx=canvas_element.getContext("2d");
+ctx.fillStyle="#000000";
+ctx.fillRect(0, 0, 800, 600);
+
+var tetris_width = 10;
+var tetris_height = 22;
+
+
+var tile_width=30;
+var tile_height=25;
+var tile_center_left=(canvas_element.width/2)-((tile_width*tetris_width)/2);
+var tile_center_top=(canvas_element.height/2)-((tile_height*tetris_height)/2);
+
+//alert(tile_center_top);
+
+var board = [];
+var temp_tile=[];
+var next_tile = [];
+var hold_tile = [];
+var current_hold_tile=-1;
+
+//歷史遺跡
+//var tile_loop = [true,true,true,true,true,true,true];
+
+var tile_loop=[];
+var run_tile=[];
+var current_order=0;
+
+var current_column;
+var current_row;
+
+var aggregate_height=[];
+var space_of_line=[];
+
+var collision_flag=false;
+var hold_flag=false;
+
+//-----------wall kick機制相關----------
+var c_flag=false;	//順時針旋轉flag
+var cc_flag=false;	//逆時針旋轉flag
+
+var test1_flag=true;
+var test2_flag=true;
+var test3_flag=true;
+var test4_flag=true;
+var test5_flag=true;
+//--------------------------------------
+var pre_status=0;
+//旋轉失敗時使用
+var present_status=0; 
+//0是往上平放,1是順時針90度旋轉依此類推
+
+const rotation_0=0; //0轉向
+const rotation_R=1; //R轉向(右轉)
+const rotation_2=2; //2轉向(0轉向反轉)
+const rotation_L=3; //L轉向
+
+const NO_TILE=0;
+const I=1;
+const O=2;
+const T=3;
+const S=4;
+const Z=5;
+const J=6;
+const L=7;
+const FIXED=8;
+//const =10;
+//方塊下落時+10
+const down_collision=18;
+
+const left_arrow=37;
+const right_arrow=39;
+const down_arrow=40;
+const Z_key=90;
+const X_key=88;
+const C_key=67;
+
+//初始化俄羅斯方塊版的二維陣列
+for(var i=0;i<tetris_height;i++)
+{
+	board[i] = [];
+	for(var j=0;j<tetris_width;j++)
+	{
+		board[i][j]=0;
+	}
+}
+
+
+//初始化正被取出的小俄羅斯方塊的二維陣列
+for(var i=0;i<4;i++)
+{
+	temp_tile[i] = [];
+	for(var j=0;j<4;j++)
+	{
+		temp_tile[i][j] = 0;
+	}
+}
+
+//初始化預覽方塊
+for(var k=1;k<8;k++)
+{
+	next_tile[k]=[];
+	hold_tile[k]=[];
+	
+	for(var i=0;i<4;i++)
+	{
+		next_tile[k][i]=[];
+		hold_tile[k][i]=[];
+		
+		for(var j=0;j<4;j++)
+		{
+			next_tile[k][i][j]=0;
+			hold_tile[k][i][j]=[];
+		}
+	}
+}
+
+var down_timer = setInterval(timer, 300);
+document.addEventListener("keydown",keydown_related,false);
+
+init_tile(next_tile);
+init_tile(hold_tile);
+decide_tile();
+create_tile();
+
+var air=0;
+
+function timer()
+{
+
+    air++;
+   
+    if(air%3 == 0)
+    {  
+		current_row++;
+		collision_related();
+        air=0;
+    }
+	
+	re_draw();
+	draw_hold();
+}
+
+function collision_related()
+{
+	for(var i=0;i<tetris_height;i++)
+	{
+		for(var j=0;j<tetris_width;j++)
+		{
+			if(FIXED != board[i][j])
+				board[i][j]=0;
+		}
+	}
+	
+	//旋轉時,值一次可能會跳過1,所以用>=
+	if(current_row+temp_tile_bottom >= tetris_height)  
+	{	
+		for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+		{
+			for(var j=current_column;j<=current_column+temp_tile_right;j++)
+			{
+				if(temp_tile[i-current_row][j-current_column] != 0 && temp_tile[i-current_row][j-current_column] != undefined)
+				{
+					board[i-1-(current_row+temp_tile_bottom-tetris_height)][j]+=10;	
+				}
+			}
+		}
+			
+		for(var t_i=0;t_i<tetris_height;t_i++)
+		{
+			for(var t_j=0;t_j<tetris_width;t_j++)
+			{
+				if(down_collision == board[t_i][t_j])   
+				{
+					collision_flag=true;
+				}
+			}
+		}
+		
+		if(collision_flag)	
+		{
+			for(var t_i=0;t_i<tetris_height;t_i++)
+			{					
+				for(var t_j=0;t_j<tetris_width;t_j++)
+				{
+					if(board[t_i][t_j]==10)
+					{
+						board[t_i-1][t_j]=FIXED;
+						board[t_i][t_j]=0;
+					}
+					
+					if(down_collision==board[t_i][t_j])
+					{
+						board[t_i-1][t_j]=FIXED;
+						board[t_i][t_j]=FIXED;
+							
+						if(t_i ==2)	
+						{
+							game_over();
+							break;
+						}
+					}
+						
+				}
+			}
+			
+			collision_flag=false;
+			check_line();
+			create_tile();
+		}
+		else
+		{
+			//單純觸底
+			for(var t_i=0;t_i<tetris_height;t_i++)
+			{					
+				for(var t_j=0;t_j<tetris_width;t_j++)
+				{
+					if(board[t_i][t_j]==10)
+					{
+						board[t_i][t_j]=FIXED;
+					}	
+				}
+			}
+		
+			check_line();
+			hold_flag=false;
+			create_tile();
+		}
+	}
+	else
+	{
+		for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+		{
+			for(var j=current_column;j<=current_column+temp_tile_right;j++)
+			{			
+
+				if(temp_tile[i-current_row][j-current_column] != 0 && temp_tile[i-current_row][j-current_column] != undefined)
+				{
+					board[i][j]+=10;
+				}
+			}
+		}
+	}
+	
+	for(var t_i=0;t_i<tetris_height;t_i++)
+	{
+		for(var t_j=0;t_j<tetris_width;t_j++)
+		{
+			if(down_collision == board[t_i][t_j])  //畫方塊前先+10,白色是8
+			{
+				collision_flag=true;
+			}
+		}
+	}
+			
+	if(collision_flag)
+	{
+		for(var t_i=0;t_i<tetris_height;t_i++)
+		{					
+			for(var t_j=0;t_j<tetris_width;t_j++)
+			{
+				if(board[t_i][t_j]==10)
+				{
+					board[t_i-1][t_j]=FIXED;
+					board[t_i][t_j]=0;
+				}
+						
+				if(down_collision == board[t_i][t_j])
+				{
+					board[t_i-1][t_j]=FIXED;
+					board[t_i][t_j]=FIXED;
+				
+					if(t_i ==2)	
+					{
+						game_over();
+						break;
+					}
+				}
+			}
+		}
+				
+		collision_flag=false;
+		check_line();
+		hold_flag=false;
+		create_tile();
+	}
+}
+
+
+function re_draw(){
+	/*for(var i=0;i<tetris_height;i++)
+	{
+		for(var j=0;j<tetris_width;j++)
+		{
+			if(FIXED != board[i][j])
+				board[i][j]=0;
+		}
+	}*/
+
+	for(var t_i=0;t_i<tetris_height;t_i++)
+	{
+		for(var t_j=0;t_j<tetris_width;t_j++)
+		{
+			if(board[t_i][t_j]==10)
+			{
+				board[t_i][t_j]=present_tile;
+			}
+		}
+	}
+
+	for(var i=0;i<tetris_height;i++)
+	{
+		for(var j=0;j<tetris_width;j++)
+		{
+			switch(board[i][j])
+			{
+				case NO_TILE:
+					ctx.fillStyle="#333333";
+					break;
+				case I:	//直,青藍色
+					ctx.fillStyle="#00FFFF";
+					break;
+				case O: //正方形,黃色
+					ctx.fillStyle="#FFFF00";
+					break;
+				case T:	//卜,紫色
+					ctx.fillStyle="#800080";
+					break;
+				case S: //S,綠色
+					ctx.fillStyle="#00FF00";
+					break;
+				case Z: //Z,紅色
+					ctx.fillStyle="#FF0000";
+					break;
+				case J: //J,藍色
+					ctx.fillStyle="#0000FF";
+					break;
+				case L: //L,橘色
+					ctx.fillStyle="#FFA500";
+					break;
+				case FIXED: //固定,白色
+					ctx.fillStyle="#FFFFFF";
+					break;
+			}
+			
+			ctx.fillRect(tile_center_left+tile_width*j,tile_center_top+tile_height*i,tile_width,tile_height);
+		}
+	}
+}
+
+function tile_clear()
+{
+	for(var i=0;i<4;i++)
+	{
+		for(var j=0;j<4;j++)
+		{
+			temp_tile[i][j]=0;
+		}
+	}
+}
+
+//較新的create_tile()
+function create_tile()
+{
+	c_flag=false;
+	cc_flag=false;
+
+	current_row=0;
+	current_column=3;
+	present_status=0;
+	pre_status=0;
+
+	can_move_flag=true;
+
+	var sum=0;
+	loop_end_flag=false;
+	
+	tile_clear();
+	
+	if(current_order ==7)	//取出第八塊方塊時
+	{
+		decide_tile();
+		current_order=0;
+		present_tile=run_tile[0];
+		current_order++;
+	}
+	else
+	{
+		present_tile=run_tile[current_order];
+		current_order++;
+	}
+	
+	switch(present_tile)
+	{
+				case 1:	//直,青藍色
+					temp_tile[1][0]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					temp_tile[1][3]=present_tile;
+					break;
+				case 2: //正方形,黃色
+					temp_tile[0][1]=present_tile;
+					temp_tile[0][2]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					break;
+				case 3:	//卜,紫色
+					temp_tile[0][1]=present_tile;
+					temp_tile[1][0]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					break;
+				case 4: //S,綠色
+					temp_tile[0][1]=present_tile;
+					temp_tile[0][2]=present_tile;
+					temp_tile[1][0]=present_tile;
+					temp_tile[1][1]=present_tile;
+					break;
+				case 5: //Z,紅色
+					temp_tile[0][0]=present_tile;
+					temp_tile[0][1]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					break;
+				case 6: //J,藍色
+					temp_tile[0][0]=present_tile;
+					temp_tile[1][0]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					break;
+				case 7: //L,橘色
+					temp_tile[0][2]=present_tile;
+					temp_tile[1][0]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					break;
+				default:
+					
+	}
+	
+	decide_bound();
+	draw_next();
+}
+
+function draw_hold()
+{
+	if(-1 == current_hold_tile)
+	{
+		for(var i=0;i<4;i++)
+		{
+			for(var j=0;j<4;j++)
+			{
+				ctx.fillStyle="#CCCCCC";
+				ctx.fillRect(50+25*j,10+16*i,25,16);
+			}
+		}	
+	}
+	else
+	{
+		for(var i=0;i<4;i++)
+		{
+			for(var j=0;j<4;j++)
+			{
+				if(0 != hold_tile[current_hold_tile][i][j])
+				{
+					switch(current_hold_tile)
+					{
+						case 1:
+							ctx.fillStyle="#00FFFF";
+							break;
+						case 2:
+							ctx.fillStyle="#FFFF00";
+							break;
+						case 3:
+							ctx.fillStyle="#800080";
+							break;
+						case 4:
+							ctx.fillStyle="#00FF00";
+							break;
+						case 5:
+							ctx.fillStyle="#FF0000";
+							break;
+						case 6:
+							ctx.fillStyle="#0000FF";
+							break;
+						case 7:
+							ctx.fillStyle="#FFA500";
+							break;
+					}
+					ctx.fillRect(50+25*j,10+16*i,25,16);
+				}
+				else
+				{
+					ctx.fillStyle="#CCCCCC";
+					ctx.fillRect(50+25*j,10+16*i,25,16);
+				}
+			}
+		}
+	}
+}
+
+
+function decide_tile()
+{
+	var random_number;
+	
+	if(run_tile.length!=0)
+	{
+		run_tile.splice(0,7);
+
+		for(var i=1;i<8;i++)
+		{
+			tile_loop.push(i);
+		}
+		
+		for(var i=0;i<7;i++)
+		{
+			random_number=parseInt(Math.random()*tile_loop.length);
+			run_tile.push(tile_loop[random_number]);
+			tile_loop.splice(tile_loop.indexOf(tile_loop[random_number]),1);
+		}
+	}
+	else
+	{
+		for(var i=1;i<8;i++)
+		{
+			tile_loop.push(i);
+		}
+	
+		for(var i=0;i<7;i++)
+		{
+			random_number=parseInt(Math.random()*tile_loop.length);
+			run_tile.push(tile_loop[random_number]);
+			tile_loop.splice(tile_loop.indexOf(tile_loop[random_number]),1);
+		}
+	
+		for(var i=1;i<8;i++)
+		{
+			tile_loop.push(i);
+		}
+	
+		for(var i=0;i<7;i++)
+		{
+			random_number=parseInt(Math.random()*tile_loop.length);
+			run_tile.push(tile_loop[random_number]);
+			tile_loop.splice(tile_loop.indexOf(tile_loop[random_number]),1);
+		}
+	}
+}
+
+function init_tile(next_tile)
+//這邊是傳參數,僅是變數名沒改
+{
+	//case 1:	//直,青藍色
+	next_tile[1][1][0]=1;
+	next_tile[1][1][1]=1;
+	next_tile[1][1][2]=1;
+	next_tile[1][1][3]=1;
+	//case 2: //正方形,黃色   正方形旋轉不用變化
+	next_tile[2][0][1]=1;
+	next_tile[2][0][2]=1;
+	next_tile[2][1][1]=1;
+	next_tile[2][1][2]=1;
+	//case 3:	//卜,也就是T型,紫色
+	next_tile[3][0][1]=1;
+	next_tile[3][1][0]=1;
+	next_tile[3][1][1]=1;
+	next_tile[3][1][2]=1;
+	//case 4: //S,綠色
+	next_tile[4][0][1]=1;
+	next_tile[4][0][2]=1;
+	next_tile[4][1][0]=1;
+	next_tile[4][1][1]=1;
+	//case 5: //N,紅色
+	next_tile[5][0][0]=1;
+	next_tile[5][0][1]=1;
+	next_tile[5][1][1]=1;
+	next_tile[5][1][2]=1;	
+	//case 6: //J,藍色								
+	next_tile[6][0][0]=1;
+	next_tile[6][1][0]=1;
+	next_tile[6][1][1]=1;
+	next_tile[6][1][2]=1;
+	//case 7: //L,橘色
+	next_tile[7][0][2]=1;
+	next_tile[7][1][0]=1;
+	next_tile[7][1][1]=1;
+	next_tile[7][1][2]=1;
+}
+
+
+function draw_next()
+{
+	for(var k=0;k<6;k++)
+	{
+		for(var i=0;i<4;i++)
+		{
+			for(var j=0;j<4;j++)
+			{
+				if(next_tile[run_tile[current_order+k]][i][j]==0)
+				{
+					ctx.fillStyle="#CCCCCC";
+					ctx.fillRect(650+25*j,10+100*k+16*i,25,16);
+				}
+				else
+				{
+					switch(run_tile[current_order+k])
+					{
+						case 1:
+							ctx.fillStyle="#00FFFF";
+							break;
+						case 2:
+							ctx.fillStyle="#FFFF00";
+							break;
+						case 3:
+							ctx.fillStyle="#800080";
+							break;
+						case 4:
+							ctx.fillStyle="#00FF00";
+							break;
+						case 5:
+							ctx.fillStyle="#FF0000";
+							break;
+						case 6:
+							ctx.fillStyle="#0000FF";
+							break;
+						case 7:
+							ctx.fillStyle="#FFA500";
+							break;
+					}
+					ctx.fillRect(650+25*j,10+100*k+16*i,25,16);
+				}
+			}
+		}
+	}
+}
+
+
+function keydown_related(e)
+{
+    //alert(e.keyCode);
+	
+    if(left_arrow == e.keyCode)  //按←
+	{
+        left_move();
+	}
+   
+    if(right_arrow==e.keyCode)    //按→
+	{
+        right_move();
+	}
+   
+    if(Z_key==e.keyCode)  //按Z鍵
+	{
+        rotate_counterclockwise();      
+	}
+  
+    if(X_key==e.keyCode)    //按X鍵
+	{
+        rotate_clockwise();
+	}
+	
+	if(C_key==e.keyCode)
+	{
+		hold();
+	}
+ 
+    if(down_arrow==e.keyCode)    //按↓
+	{
+		//alert("按↓");
+        down();
+	}
+}
+
+function left_move()
+{	
+	can_move_flag=true;
+	
+	//current_column值可能為負
+	
+	if(current_column>0)
+	{
+		for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+		{
+			for(var j=current_column;j<=current_column+temp_tile_right;j++)
+			{
+				if(temp_tile[i-current_row][j-current_column] != 0 && temp_tile[i-current_row][j-current_column] != undefined)
+				{
+					if(FIXED == board[i][j-1])
+					{
+						can_move_flag=false;
+					}
+				}
+			}
+		}
+		
+		if(can_move_flag)
+		{
+			current_column--;
+		}
+	}
+	else
+	{
+		if(temp_tile_left > 0 && current_column>-temp_tile_left)
+		{
+			current_column--;
+		}
+	}
+}
+
+function right_move()
+{	
+	can_move_flag=true;
+
+	if(current_column+temp_tile_right < 9)
+	{
+		for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+		{
+			for(var j=current_column;j<=current_column+temp_tile_right;j++)
+			{
+				if(temp_tile[i-current_row][j-current_column] != 0 && temp_tile[i-current_row][j-current_column] != undefined)
+				{
+					if(FIXED == board[i][j+1])
+					{
+						can_move_flag=false;
+					}
+				}
+			}
+		}
+		
+		if(can_move_flag)
+		{
+			current_column++;
+		}
+	}
+}
+
+function hold()
+{
+	if(!hold_flag)
+	{
+		if(-1==current_hold_tile) 
+		{
+			current_hold_tile=present_tile;
+			create_tile();
+			hold_flag=true;
+		}
+		else
+		{
+			current_order--;
+			run_tile[current_order]=current_hold_tile;
+			current_hold_tile=present_tile;
+			create_tile();
+			hold_flag=true;
+			//僅交換現有方塊跟hold方塊並沒有改變取出俄羅斯方塊的狀態
+			//並沒有改變取出俄羅斯方塊的狀態與之後的順序
+			
+		}
+	}
+	else
+	{
+		alert("本回合已交換hold方塊過");
+	}
+	
+	//hold方塊規則似乎是
+	//若沒有方塊,把方塊轉入hold,取出next方塊(這算一次交換)
+	//若有方塊,在此方塊尚未交換的情況下,替換現在的方塊跟hold方塊
+	//也就是每次hold交換僅限一次
+	//感覺至少需要一個flag(旗幟)來判斷
+	//然後需要hold_tile儲存被hold的方塊
+}
+
+function decide_bound()
+{
+	temp_tile_top=3;
+	temp_tile_left=3;
+	temp_tile_right=0;
+	temp_tile_bottom=0;
+	
+	for(var i=0;i<4;i++)
+	{
+		for(var j=0;j<4;j++)
+		{
+			if(temp_tile[i][j] != 0)
+			{
+				if(j<temp_tile_left)
+				{
+					temp_tile_left = j;
+				}
+				
+				
+				if(j>temp_tile_right)
+				{
+					temp_tile_right = j;
+				}
+					
+				if(i>temp_tile_bottom)
+				{
+					temp_tile_bottom=i;
+				}
+				
+				if(i<temp_tile_top)
+				{
+					temp_tile_top=i;
+				}
+			}
+		}
+	}
+	
+	
+	//邊界踢牆或者說邊界內縮判斷
+	if(current_column+temp_tile_right-temp_tile_left > 9)
+	{
+		current_column = 9-temp_tile_right+temp_tile_left;
+	}
+	
+}
+
+function check_line()
+{
+	var sum=0;
+
+	for(var i=tetris_height-1;i>=0;i--)
+	{
+		sum=0;
+	
+		for(var j=0;j<tetris_width;j++)
+		{
+			sum += board[i][j];
+		}
+		
+		if(sum==80)	//固定後的白色格子是8,橫的10格
+		{
+		
+			for(var k=i;k>0;k--)
+			{
+				for(var j=0;j<tetris_width;j++)
+				{
+					board[k][j]=board[k-1][j];
+				}
+			}
+			
+			i++;
+			
+		}
+	}
+}
+
+function rotate_clockwise()
+{
+	c_flag=true;
+	cc_flag=false;
+	
+	pre_status=present_status;
+	
+	if(present_status < rotation_L)
+	{
+		present_status += 1;
+	}
+	else
+	{
+		present_status = rotation_0;
+	}
+	
+	
+	//要儲存旋轉後的小俄羅斯方塊陣列,因此先把之前的清空
+	rotate_detail();
+}
+
+function rotate_counterclockwise()
+{
+	c_flag=false;
+	cc_flag=true;
+	
+	pre_status=present_status;
+
+	if(present_status > 0)
+	{
+		present_status -= 1;
+	}
+	else
+	{
+		present_status = rotation_L;
+	}
+	
+	rotate_detail();
+}
+
+function rotate_detail()
+{
+	tile_clear();
+
+	//等下是兩層switch-case,雖然較不常見
+	//但本質上跟兩層if差不多啦!!就放心的用
+	switch(present_tile)
+	{
+		case I:	//直,青藍色
+			switch(present_status)
+			{
+				case rotation_0:
+					temp_tile[1][0]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					temp_tile[1][3]=present_tile;
+					break;
+				case rotation_R:
+					temp_tile[0][2]=present_tile;
+					temp_tile[1][2]=present_tile;
+					temp_tile[2][2]=present_tile;
+					temp_tile[3][2]=present_tile;
+					break;
+				case rotation_2:
+					temp_tile[2][0]=present_tile;
+					temp_tile[2][1]=present_tile;
+					temp_tile[2][2]=present_tile;
+					temp_tile[2][3]=present_tile;
+					break;
+				case rotation_L:
+					temp_tile[0][1]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[2][1]=present_tile;
+					temp_tile[3][1]=present_tile;
+					break;
+			}
+			break;
+		case O: //正方形,黃色
+			switch(present_status)
+			{
+				case rotation_0:
+					temp_tile[0][1]=present_tile;
+					temp_tile[0][2]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					break;
+				case rotation_R:
+					temp_tile[0][1]=present_tile;
+					temp_tile[0][2]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					break;
+				case rotation_2:
+					temp_tile[0][1]=present_tile;
+					temp_tile[0][2]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					break;
+				case rotation_L:
+					temp_tile[0][1]=present_tile;
+					temp_tile[0][2]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					break;
+			}
+			break;
+			
+		case T:	//卜,紫色
+			switch(present_status)
+			{
+				case rotation_0:
+					temp_tile[0][1]=present_tile;
+					temp_tile[1][0]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					break;
+				case rotation_R:
+					temp_tile[1][2]=present_tile;
+					temp_tile[0][1]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[2][1]=present_tile;
+					break;
+				case rotation_2:
+					temp_tile[2][1]=present_tile;
+					temp_tile[1][0]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					break;
+				case rotation_L:
+					temp_tile[1][0]=present_tile;
+					temp_tile[0][1]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[2][1]=present_tile;
+					break;
+			}
+			break;
+			
+		case S: //S,綠色
+			switch(present_status)
+			{
+				case rotation_0:
+					temp_tile[0][1]=present_tile;
+					temp_tile[0][2]=present_tile;
+					temp_tile[1][0]=present_tile;
+					temp_tile[1][1]=present_tile;
+					break;
+				case rotation_R:
+					temp_tile[0][1]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					temp_tile[2][2]=present_tile;
+					break;
+				case rotation_2:
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					temp_tile[2][0]=present_tile;
+					temp_tile[2][1]=present_tile;
+					break;
+				case rotation_L:
+					temp_tile[0][0]=present_tile;
+					temp_tile[1][0]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[2][1]=present_tile;
+					break;
+			}
+			break;
+		case Z: //Z,紅色
+			switch(present_status)
+			{
+				case rotation_0:
+					temp_tile[0][0]=present_tile;
+					temp_tile[0][1]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					break;
+				case rotation_R:
+					temp_tile[0][2]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					temp_tile[2][1]=present_tile;
+					break;
+				case rotation_2:
+					temp_tile[1][0]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[2][1]=present_tile;
+					temp_tile[2][2]=present_tile;
+					break;
+				case rotation_L:
+					temp_tile[0][1]=present_tile;
+					temp_tile[1][0]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[2][0]=present_tile;
+					break;
+			}
+			break;
+		case J: //J,藍色
+			switch(present_status)
+			{
+				case rotation_0:
+					temp_tile[0][0]=present_tile;
+					temp_tile[1][0]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					break;
+				case rotation_R:
+					temp_tile[0][1]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[2][1]=present_tile;
+					temp_tile[0][2]=present_tile;
+					break;
+				case rotation_2:
+					temp_tile[2][2]=present_tile;
+					temp_tile[1][0]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					break;
+				case rotation_L:
+					temp_tile[2][0]=present_tile;
+					temp_tile[0][1]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[2][1]=present_tile;		
+					break;
+			}
+			break;
+		case L: //L,橘色
+			switch(present_status)
+			{
+				case rotation_0:
+					temp_tile[0][2]=present_tile;
+					temp_tile[1][0]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					break;
+				case rotation_R:
+					temp_tile[0][1]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[2][1]=present_tile;
+					temp_tile[2][2]=present_tile;
+					break;
+				case rotation_2:
+					temp_tile[1][0]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[1][2]=present_tile;
+					temp_tile[2][0]=present_tile;
+					break;
+				case rotation_L:
+					temp_tile[0][0]=present_tile;
+					temp_tile[0][1]=present_tile;
+					temp_tile[1][1]=present_tile;
+					temp_tile[2][1]=present_tile;
+					break;
+			}
+			break;
+	}
+	
+	decide_bound();
+	check_rotate();
+}
+
+function check_rotate()
+{
+	test1_flag=true;
+	test2_flag=true;
+	test3_flag=true;
+	test4_flag=true;
+	test5_flag=true;
+	
+	rotate_test1();
+	
+	if(!test1_flag)
+	//因為我變數幾乎都全域變數
+	//因此想了一下就把相關函式改成不傳參數的了
+	{
+		switch(present_tile)
+		{
+			case I:	//I方塊
+				rotate_I_test2();
+				if(!test2_flag)	rotate_I_test3();
+				if(!test3_flag)	rotate_I_test4();
+				if(!test4_flag)	rotate_I_test5();
+				
+				if(!test5_flag)
+				{
+					present_status=pre_status;
+					rotate_detail();
+				}
+				break;
+			//沒case 2是因為正方形旋轉不用處理
+			case T:	//T
+			case S:	//S
+			case Z:	//Z
+			case J:	//J
+			case L:	//L
+				rotate_test2();
+				if(!test2_flag)	rotate_test3();
+				if(!test3_flag)	rotate_test4();
+				if(!test4_flag)	rotate_test5();
+				
+				if(!test5_flag)
+				{
+					present_status=pre_status;
+					rotate_detail();
+				}
+				break;
+		}
+	}
+}
+
+function rotate_test1()
+{
+	if(current_column<0 && temp_tile_left==0)
+	{
+		current_column=0;
+		rotate_detail();
+	}
+	else
+	{
+
+	if(current_row+temp_tile_bottom <= tetris_height-1)  
+	{
+		for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+		{
+			
+		
+			for(var j=current_column;j<=current_column+temp_tile_right;j++)
+			{
+				if(temp_tile[i-current_row][j-current_column] != 0 && temp_tile[i-current_row][j-current_column] != undefined)
+				{
+					if(FIXED == board[i][j])
+					{
+						test1_flag=false;
+					}
+				}
+			}
+			
+		}
+	}
+	else
+	{
+		for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+		{
+			for(var j=current_column;j<=current_column+temp_tile_right;j++)
+			{
+				if(temp_tile[i-current_row][j-current_column] != 0 && temp_tile[i-current_row][j-current_column] != undefined)
+				{
+					if(FIXED == board[i-temp_tile_bottom][j])
+					{
+						test1_flag=false;
+					}
+				}
+			}
+		}
+	}
+	}
+}
+
+function rotate_test2()
+{
+	if(current_row+temp_tile_bottom <= tetris_height-1)  
+	{
+		if(c_flag)
+		{
+			switch(pre_status)
+			{
+				case 0:
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+							for(var j=current_column;j<=current_column+temp_tile_right;j++)
+							{
+								if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+								{
+									if(board[i][j-1]==8)	//改board[][]判斷才對
+									{
+										alert("碰撞 i"+i+" j"+(j-1));
+										test2_flag=false;
+									}
+								}
+							}
+					}
+					break;
+				case 1:	//case 1代表從R轉向到2轉向   (1,0)
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i][j+1]==8)
+								{
+									test2_flag=false;
+								}
+							}
+						}
+					}
+					break;
+				case 2:	//case 2代表從2轉向到L轉向轉向   (1,0)
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i][j+1]==8)
+								{
+									test2_flag=false;
+								}
+							}
+						}
+					}
+					break;
+				case 3:	//case 3代表從L轉向到0轉向   (-1,0)
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i][j-1]==8)
+								{
+									test2_flag=false;
+								}
+							}
+						}
+					}
+					break;
+			}
+		}
+		
+		if(cc_flag)
+		{
+			switch(pre_status)
+			{
+				case 0:	//(+1, 0) 整個右偏1格再判斷碰撞
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+							for(var j=current_column;j<=current_column+temp_tile_right;j++)
+							{
+								if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+								{
+									if(board[i][j+1]==8)	//改board[][]判斷才對
+									{
+										alert("碰撞 i"+i+" j"+(j-1));
+										test2_flag=false;
+									}
+								}
+							}
+					}
+					break;
+				case 1:	//case 1代表從L轉向到2轉向 (-1,0)
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i][j-1]==8)
+								{
+									test2_flag=false;
+								}
+							}
+						}
+					}
+					break;
+				case 2:	//case 2代表從2轉向到R轉向	(-1,0)
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i][j-1]==8)	//改board[][]判斷才對
+								{
+									test2_flag=false;
+								}
+							}
+						}
+					}
+					break;
+				case 3:	//case 3代表從R轉向到0轉向   (-1,0)
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i][j+1]==8)
+								{
+									test2_flag=false;
+								}
+							}
+						}
+					}
+					break;
+			}
+		}
+	}
+	else
+	{
+		//觸底時的踢牆機制(晚些再處理,因為還要想要怎麼測試)
+		test2_flag=false;
+	}
+	
+	if(test2_flag)	//可以wall kick
+	{
+		switch(pre_status)
+		{
+			case 0:
+				if(c_flag)
+				{
+					current_column--;
+				}
+				if(cc_flag)
+				{
+					current_column++;
+				}
+				break;
+			case 1:
+				if(c_flag)
+				{
+					current_column++;
+				}
+				if(cc_flag)
+				{
+					current_column--;
+				}
+				break;
+			case 2:
+				if(c_flag)
+				{
+					current_column++;
+				}
+				if(cc_flag)
+				{
+					current_column--;
+				}
+				break;
+			case 3:
+				if(c_flag)
+				{
+					current_column--;
+				}
+				if(cc_flag)
+				{
+					current_column++;
+				}
+				break;
+		}		
+	}
+}
+
+function rotate_test3()
+{
+	if(current_row+temp_tile_bottom+1 <= tetris_height-1)
+	//因為會往上下浮動一格,不加1會超出陣列索引
+	{
+		if(c_flag)
+		{
+			switch(pre_status)
+			{
+				case 0:
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+							for(var j=current_column;j<=current_column+temp_tile_right;j++)
+							{
+								if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+								{
+									if(board[i-1][j-1]==8)
+									{
+										alert("碰撞 i"+i+" j"+(j-1));
+										test3_flag=false;
+									}
+								}
+							}
+					}
+					break;
+				case 1:	//case 1代表從R轉向到2轉向
+					alert("test3");
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i+1][j+1]==8)
+								{
+									alert("碰撞,j"+j + " i"+i);
+									test3_flag=false;
+								}
+							}
+						}
+					}
+					break;
+				case 2:	//case 2代表從2轉向到L轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i-1][j+1]==8)
+								{
+									test3_flag=false;
+								}
+							}
+						}
+					}
+					break;
+				case 3:	//case 3代表從L轉向到0轉向   (-1,0)
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i+1][j-1]==8)
+								{
+									test3_flag=false;
+								}
+							}
+						}
+					}
+					break;
+			}
+		}
+		
+		if(cc_flag)
+		{
+			switch(pre_status)
+			{
+				case 0:
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+							for(var j=current_column;j<=current_column+temp_tile_right;j++)
+							{
+								if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+								{
+									if(board[i-1][j+1]==8)	//改board[][]判斷才對
+									{
+										alert("碰撞 i"+i+" j"+(j-1));
+										test3_flag=false;
+									}
+								}
+							}
+					}
+					break;
+				case 1:	//case 1代表從L轉向到2轉向 (-1,0)
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i+1][j-1]==8)
+								{
+									test3_flag=false;
+								}
+							}
+						}
+					}
+					break;
+				case 2:	//case 2代表從2轉向到R轉向	(-1,0)
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i-1][j-1]==8)	//改board[][]判斷才對
+								{
+									test3_flag=false;
+								}
+							}
+						}
+					}
+					break;
+				case 3:	//case 3代表從R轉向到0轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i+1][j+1]==8)
+								{
+									test3_flag=false;
+								}
+							}
+						}
+					}
+					break;
+			}
+		}
+	}
+	else
+	{
+		test3_flag=false;
+		alert("觸底");
+	}
+	
+	if(test3_flag)	//可以wall kick
+	{
+		switch(pre_status)
+		{
+			case 0:
+				if(c_flag)
+				{
+					current_row--;
+					current_column--;
+				}
+				if(cc_flag)
+				{
+					current_row--;
+					current_column++;
+				}
+				break;
+			case 1:
+				if(c_flag)
+				{
+					current_row++;
+					current_column++;
+				}
+
+				if(cc_flag)
+				{
+					current_row++;
+					current_column--;
+				}
+				break;
+			case 2:
+				if(c_flag)
+				{
+					current_row--;
+					current_column++;
+				}
+				if(cc_flag)
+				{
+					current_row--;
+					current_column--;
+				}
+				break;
+			case 3:
+				if(c_flag)
+				{
+					current_row++;
+					current_column--;
+				}
+				if(cc_flag)
+				{
+					current_row++;
+					current_column++;
+				}
+				break;
+		}
+	}
+}
+
+function rotate_test4()
+{
+	if(current_row+temp_tile_bottom+2 <= tetris_height-1)  
+	{
+		if(c_flag)
+		{
+			switch(pre_status)
+			{
+				case 0:
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+							for(var j=current_column;j<=current_column+temp_tile_right;j++)
+							{
+								if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+								{
+									if(board[i+2][j]==8)
+									{
+										alert("碰撞 i"+i+" j"+(j-1));
+										test4_flag=false;
+									}
+								}
+							}
+					}
+					break;
+				case 1:	//case 1代表從R轉向到2轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i-2][j]==8)
+								{
+									test4_flag=false;
+								}
+							}
+						}
+					}
+					break;
+				case 2:	//case 2代表從2轉向到L轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i+2][j]==8)
+								{
+									test4_flag=false;
+								}
+							}
+						}
+					}
+					break;
+				case 3:	//case 3代表從L轉向到0轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i+2][j]==8)
+								{
+									test4_flag=false;
+								}
+							}
+						}
+					}
+					break;
+			}
+		}
+		
+		if(cc_flag)
+		{
+			switch(pre_status)
+			{
+				case 0:
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+							for(var j=current_column;j<=current_column+temp_tile_right;j++)
+							{
+								if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+								{
+									if(board[i+2][j]==8)	//改board[][]判斷才對
+									{
+										alert("碰撞 i"+i+" j"+(j-1));
+										test4_flag=false;
+									}
+								}
+							}
+					}
+					break;
+				case 1:	//case 1代表從L轉向到2轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i-2][j]==8)
+								{
+									test4_flag=false;
+								}
+							}
+						}
+					}
+					break;
+				case 2:	//case 2代表從2轉向到R轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i+2][j]==8)	//改board[][]判斷才對
+								{
+									test4_flag=false;
+								}
+							}
+						}
+					}
+					break;
+				case 3:	//case 3代表從R轉向到0轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i+2][j]==8)
+								{
+									test4_flag=false;
+								}
+							}
+						}
+					}
+					break;
+			}
+		}
+	}
+	else
+	{
+		test4_flag=false;
+	}
+	
+	if(test4_flag)	//可以wall kick
+	{
+		switch(pre_status)
+		{
+			case 0:
+				if(c_flag)
+				{
+					current_row+=2;
+				}
+				if(cc_flag)
+				{
+					current_row+=2;
+				}
+				break;
+			case 1:
+				if(c_flag)
+				{
+					current_row-=2;
+				}
+				if(cc_flag)
+				{
+					current_row-=2;
+				}
+				break;
+			case 2:
+				if(c_flag)
+				{
+					current_row+=2;
+				}
+				if(cc_flag)
+				{
+					current_row+=2;
+				}
+				break;
+			case 3:
+				if(c_flag)
+				{
+					current_row-=2;
+				}
+				if(cc_flag)
+				{
+					current_row-=2;
+				}
+				break;
+		}		
+	}
+}
+
+function rotate_test5()
+{
+	if(current_row+temp_tile_bottom+2 <= tetris_height-1)  
+	{
+		if(c_flag)
+		{
+			switch(pre_status)
+			{
+				case 0:
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+							for(var j=current_column;j<=current_column+temp_tile_right;j++)
+							{
+								if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+								{
+									if(board[i+2][j-1]==8)
+									{
+										alert("碰撞 i"+i+" j"+(j-1));
+										test5_flag=false;
+									}
+								}
+							}
+					}
+					break;
+				case 1:	//case 1代表從R轉向到2轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i-2][j+1]==8)
+								{
+									test5_flag=false;
+								}
+							}
+						}
+					}
+					break;
+				case 2:	//case 2代表從2轉向到L轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i+2][j+1]==8)
+								{
+									test5_flag=false;
+								}
+							}
+						}
+					}
+					break;
+				case 3:	//case 3代表從L轉向到0轉向   (-1,0)
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i-2][j-1]==8)
+								{
+									test5_flag=false;
+								}
+							}
+						}
+					}
+					break;
+			}
+		}
+		
+		if(cc_flag)
+		{
+			switch(pre_status)
+			{
+				case 0:
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+							for(var j=current_column;j<=current_column+temp_tile_right;j++)
+							{
+								if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+								{
+									if(board[i+2][j+1]==8)	//改board[][]判斷才對
+									{
+										alert("碰撞 i"+i+" j"+(j-1));
+										test5_flag=false;
+									}
+								}
+							}
+					}
+					break;
+				case 1:	//case 1代表從L轉向到2轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i-2][j-1]==8)
+								{
+									test5_flag=false;
+								}
+							}
+						}
+					}
+					break;
+				case 2:	//case 2代表從2轉向到R轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i+2][j-1]==8)	//改board[][]判斷才對
+								{
+									test5_flag=false;
+								}
+							}
+						}
+					}
+					break;
+				case 3:	//case 3代表從R轉向到0轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i-2][j+1]==8)
+								{
+									test5_flag=false;
+								}
+							}
+						}
+					}
+					break;
+			}
+		}
+	}
+	else
+	{
+		test5_flag=false;
+	}
+	
+	if(test5_flag)	//可以wall kick
+	{
+		switch(pre_status)
+		{
+			case 0:
+				if(c_flag)
+				{
+					current_row+=2;
+					current_column--;
+				}
+				if(cc_flag)
+				{
+					current_row+=2;
+					current_column++;
+				}
+				break;
+			case 1:
+				if(c_flag)
+				{
+					current_row-=2;
+					current_column++;
+				}
+				if(cc_flag)
+				{
+					current_row-=2;
+					current_column--;
+				}
+				break;
+			case 2:
+				if(c_flag)
+				{
+					current_row+=2;
+					current_column++;
+				}
+				if(cc_flag)
+				{
+					current_row+=2;
+					current_column--;
+				}
+				break;
+			case 3:
+				if(c_flag)
+				{
+					current_row-=2;
+					current_column--;
+				}
+				if(cc_flag)
+				{
+					current_row-=2;
+					current_column++;
+				}
+				break;
+		}		
+	}
+}
+
+
+function rotate_I_test2()
+{
+	if(current_row+temp_tile_bottom <= tetris_height-1)  
+	{
+		if(c_flag)
+		{
+			switch(pre_status)
+			{
+				case 0:
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+							for(var j=current_column;j<=current_column+temp_tile_right;j++)
+							{
+								if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+								{
+									if(board[i][j-2]==8)
+									{
+										alert("碰撞 i"+i+" j"+(j-1));
+										test2_flag=false;
+									}
+								}
+							}
+					}
+					break;
+				case 1:	//case 1代表從R轉向到2轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i][j-1]==8)
+								{
+									test2_flag=false;
+								}
+							}
+						}
+					}
+					break;
+				case 2:	//case 2代表從2轉向到L轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i][j+2]==8)
+								{
+									test2_flag=false;
+								}
+							}
+						}
+					}
+					break;
+				case 3:	//case 3代表從L轉向到0轉向   (-1,0)
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i][j+1]==8)
+								{
+									test2_flag=false;
+								}
+							}
+						}
+					}
+					break;
+			}
+		}
+		
+		if(cc_flag)
+		{
+			switch(pre_status)
+			{
+				case 0:
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+							for(var j=current_column;j<=current_column+temp_tile_right;j++)
+							{
+								if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+								{
+									if(board[i][j-1]==8)	//改board[][]判斷才對
+									{
+										alert("碰撞 i"+i+" j"+(j-1));
+										test2_flag=false;
+									}
+								}
+							}
+					}
+					break;
+				case 1:	//case 1代表從L轉向到2轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i][j-2]==8)
+								{
+									test2_flag=false;
+								}
+							}
+						}
+					}
+					break;
+				case 2:	//case 2代表從2轉向到R轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i][j+1]==8)	//改board[][]判斷才對
+								{
+									test2_flag=false;
+								}
+							}
+						}
+					}
+					break;
+				case 3:	//case 3代表從R轉向到0轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i][j+2]==8)
+								{
+									test2_flag=false;
+								}
+							}
+						}
+					}
+					break;
+			}
+		}
+	}
+	else
+	{
+		test2_flag=false;
+	}
+	
+	if(test2_flag)	//可以wall kick
+	{
+		switch(pre_status)
+		{
+			case 0:
+				if(c_flag)
+				{
+					current_column-=2;
+				}
+				if(cc_flag)
+				{
+					current_column--;
+				}
+				break;
+			case 1:
+				if(c_flag)
+				{
+					current_column--;
+				}
+				if(cc_flag)
+				{
+					current_column-=2;
+				}
+				break;
+			case 2:
+				if(c_flag)
+				{
+					current_column+=2;
+				}
+				if(cc_flag)
+				{
+					current_column++;
+				}
+				break;
+			case 3:
+				if(c_flag)
+				{
+					current_column++;
+				}
+				if(cc_flag)
+				{
+					current_column+=2;
+				}
+				break;
+		}		
+	}
+}
+
+function rotate_I_test3()
+{
+	if(current_row+temp_tile_bottom <= tetris_height-1)  
+	{
+		if(c_flag)
+		{
+			switch(pre_status)
+			{
+				case 0:
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+							for(var j=current_column;j<=current_column+temp_tile_right;j++)
+							{
+								if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+								{
+									if(board[i][j+1]==8)
+									{
+										alert("碰撞 i"+i+" j"+(j-1));
+										test3_flag=false;
+									}
+								}
+							}
+					}
+					break;
+				case 1:	//case 1代表從R轉向到2轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i][j+2]==8)
+								{
+									test3_flag=false;
+								}
+							}
+						}
+					}
+					break;
+				case 2:	//case 2代表從2轉向到L轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i][j-1]==8)
+								{
+									test3_flag=false;
+								}
+							}
+						}
+					}
+					break;
+				case 3:	//case 3代表從L轉向到0轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i][j-2]==8)
+								{
+									test3_flag=false;
+								}
+							}
+						}
+					}
+					break;
+			}
+		}
+		
+		if(cc_flag)
+		{
+			switch(pre_status)
+			{
+				case 0:
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+							for(var j=current_column;j<=current_column+temp_tile_right;j++)
+							{
+								if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+								{
+									if(board[i][j+2]==8)	//改board[][]判斷才對
+									{
+										alert("碰撞 i"+i+" j"+(j-1));
+										test3_flag=false;
+									}
+								}
+							}
+					}
+					break;
+				case 1:	//case 1代表從L轉向到2轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i][j+1]==8)
+								{
+									test3_flag=false;
+								}
+							}
+						}
+					}
+					break;
+				case 2:	//case 2代表從2轉向到R轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i][j-2]==8)	//改board[][]判斷才對
+								{
+									test3_flag=false;
+								}
+							}
+						}
+					}
+					break;
+				case 3:	//case 3代表從R轉向到0轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i][j-1]==8)
+								{
+									test3_flag=false;
+								}
+							}
+						}
+					}
+					break;
+			}
+		}
+	}
+	else
+	{
+		test3_flag=false;
+	}
+	
+	if(test3_flag)	//可以wall kick
+	{
+		switch(pre_status)
+		{
+			case 0:
+				if(c_flag)
+				{
+					current_column++;
+				}
+				if(cc_flag)
+				{
+					current_column+=2;
+				}
+				break;
+			case 1:
+				if(c_flag)
+				{
+					current_column+=2;
+				}
+				if(cc_flag)
+				{
+					current_column++;
+				}
+				break;
+			case 2:
+				if(c_flag)
+				{
+					current_column--;
+				}
+				if(cc_flag)
+				{
+					current_column-=2;
+				}
+				break;
+			case 3:
+				if(c_flag)
+				{
+					current_column-=2;
+				}
+				if(cc_flag)
+				{
+					current_column--;
+				}
+				break;
+		}		
+	}
+}
+
+function rotate_I_test4()
+{
+	if(current_row+temp_tile_bottom+2 <= tetris_height-1)  
+	{
+		if(c_flag)
+		{
+			switch(pre_status)
+			{
+				case 0:
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+							for(var j=current_column;j<=current_column+temp_tile_right;j++)
+							{
+								if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+								{
+									if(board[i+1][j-2]==8)
+									{
+										alert("碰撞 i"+i+" j"+(j-1));
+										test4_flag=false;
+									}
+								}
+							}
+					}
+					break;
+				case 1:	//case 1代表從R轉向到2轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i-2][j-1]==8)
+								{
+									test4_flag=false;
+								}
+							}
+						}
+					}
+					break;
+				case 2:	//case 2代表從2轉向到L轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i-1][j+2]==8)
+								{
+									test4_flag=false;
+								}
+							}
+						}
+					}
+					break;
+				case 3:	//case 3代表從L轉向到0轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i+2][j+1]==8)
+								{
+									test4_flag=false;
+								}
+							}
+						}
+					}
+					break;
+			}
+		}
+		
+		if(cc_flag)
+		{
+			switch(pre_status)
+			{
+				case 0:
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+							for(var j=current_column;j<=current_column+temp_tile_right;j++)
+							{
+								if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+								{
+									if(board[i-2][j-1]==8)	//改board[][]判斷才對
+									{
+										alert("碰撞 i"+i+" j"+(j-1));
+										test4_flag=false;
+									}
+								}
+							}
+					}
+					break;
+				case 1:	//case 1代表從L轉向到2轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i+1][j-2]==8)
+								{
+									test4_flag=false;
+								}
+							}
+						}
+					}
+					break;
+				case 2:	//case 2代表從2轉向到R轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i+2][j+1]==8)	//改board[][]判斷才對
+								{
+									test4_flag=false;
+								}
+							}
+						}
+					}
+					break;
+				case 3:	//case 3代表從R轉向到0轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i-1][j+2]==8)
+								{
+									test4_flag=false;
+								}
+							}
+						}
+					}
+					break;
+			}
+		}
+	}
+	else
+	{
+		test4_flag=false;
+	}
+	
+	if(test4_flag)	//可以wall kick
+	{
+		switch(pre_status)
+		{
+			case 0:
+				if(c_flag)
+				{
+					current_row++;
+					current_column-=2;
+				}
+				if(cc_flag)
+				{
+					current_row-=2;
+					current_column--;
+				}
+				break;
+			case 1:
+				if(c_flag)
+				{
+					current_row-=2;
+					current_column--;
+				}
+				if(cc_flag)
+				{
+					current_row++;
+					current_column-=2;
+				}
+				break;
+			case 2:
+				if(c_flag)
+				{
+					current_row--;
+					current_column+=2;
+				}
+				if(cc_flag)
+				{
+					current_row+=2;
+					current_column++;
+				}
+				break;
+			case 3:
+				if(c_flag)
+				{
+					current_row+=2;
+					current_column++;
+				}
+				if(cc_flag)
+				{
+					current_row--;
+					current_column+=2;
+				}
+				break;
+		}		
+	}
+}
+
+function rotate_I_test5()
+{
+	if(current_row+temp_tile_bottom+2 <= tetris_height-1)  
+	{
+		if(c_flag)
+		{
+			switch(pre_status)
+			{
+				case 0:
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+							for(var j=current_column;j<=current_column+temp_tile_right;j++)
+							{
+								if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+								{
+									if(board[i-2][j+1]==8)
+									{
+										alert("碰撞 i"+i+" j"+(j-1));
+										test5_flag=false;
+									}
+								}
+							}
+					}
+					break;
+				case 1:	//case 1代表從R轉向到2轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i+1][j+2]==8)
+								{
+									test5_flag=false;
+								}
+							}
+						}
+					}
+					break;
+				case 2:	//case 2代表從2轉向到L轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i+2][j-1]==8)
+								{
+									test5_flag=false;
+								}
+							}
+						}
+					}
+					break;
+				case 3:	//case 3代表從L轉向到0轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i-1][j-2]==8)
+								{
+									test5_flag=false;
+								}
+							}
+						}
+					}
+					break;
+			}
+		}
+		
+		if(cc_flag)
+		{
+			switch(pre_status)
+			{
+				case 0:
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+							for(var j=current_column;j<=current_column+temp_tile_right;j++)
+							{
+								if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+								{
+									if(board[i+1][j+2]==8)	//改board[][]判斷才對
+									{
+										alert("碰撞 i"+i+" j"+(j-1));
+										test5_flag=false;
+									}
+								}
+							}
+					}
+					break;
+				case 1:	//case 1代表從L轉向到2轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i-2][j+1]==8)
+								{
+									test5_flag=false;
+								}
+							}
+						}
+					}
+					break;
+				case 2:	//case 2代表從2轉向到R轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i-1][j-2]==8)	//改board[][]判斷才對
+								{
+									test5_flag=false;
+								}
+							}
+						}
+					}					
+					break;
+				case 3:	//case 3代表從R轉向到0轉向
+					for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+					{
+						for(var j=current_column;j<=current_column+temp_tile_right;j++)
+						{
+							if(temp_tile[i-current_row][j-current_column] == present_tile && temp_tile[i-current_row][j-current_column] != undefined)
+							{
+								if(board[i+2][j-1]==8)
+								{
+									test5_flag=false;
+								}
+							}
+						}
+					}
+					break;
+			}
+		}
+	}
+	else
+	{
+		test5_flag=false;
+	}
+	
+	if(test5_flag)	//可以wall kick
+	{
+		switch(pre_status)
+		{
+			case 0:
+				if(c_flag)
+				{
+					current_row-=2;
+					current_column++;
+				}
+				if(cc_flag)
+				{
+					current_row++;
+					current_column+=2;
+				}
+				break;
+			case 1:
+				if(c_flag)
+				{
+					current_row++;
+					current_column+=2;
+				}
+				if(cc_flag)
+				{
+					current_row-=2;
+					current_column++;
+				}
+				break;
+			case 2:
+				if(c_flag)
+				{
+					current_row+=2;
+					current_column--;
+				}
+				if(cc_flag)
+				{
+					current_row--;
+					current_column-=2;
+				}
+				break;
+			case 3:
+				if(c_flag)
+				{
+					current_row--;
+					current_column-=2;
+				}
+				if(cc_flag)
+				{
+					current_row+=2;
+					current_column--;
+				}
+				break;
+		}		
+	}
+}
+
+var test_flag=false;
+
+function ghost_piece()
+{
+	for(var i=0;i<tetris_width;i++)
+	{
+		aggregate_height[i]=0;
+	}
+	
+	for(var i=0;i<tetris_height;i++)
+	{
+		space_of_line[i]=tetris_width;
+	}
+	
+	for(var i=0;i<tetris_height;i++)
+	{
+		for(var j=0;j<tetris_width;j++)
+		{
+			if(board[i][j] == 8 && (tetris_height-i)>aggregate_height[j])
+			{
+				aggregate_height[j]=tetris_height-i;
+			}
+			
+			if(board[i][j] == 8)
+			{
+				space_of_line[i]--;
+			}
+			
+		}
+	}
+/*
+	for(var i=0;i<tetris_height;i++)
+	{
+		for(var j=0;j<tetris_width;j++)
+		{
+			if(board[current_column][tetris_height-i]==0)
+			{
+				if(!test_flag)
+				{
+				for(var ii=0;ii<4;ii++)
+				{
+					for(var jj=0;jj<4;jj++)
+					{
+						if(temp_tile[ii][jj]!=0)
+						{
+							//這樣可以取出形狀
+							//然後是挪到底層
+							ctx.strokeStyle = 'red';
+							ctx.strokeRect(50+25*jj,100+16*ii,25,16);
+						}
+					}
+				}
+				
+				test_flag=true;
+				}
+			}
+		}
+	}
+	*/
+	/*
+for(var i=current_row;i<=current_row+temp_tile_bottom;i++)
+		{
+	for(var j=current_column;j<=current_column+temp_tile_right;j++)
+			{			
+
+		if(temp_tile[i-current_row][j-current_column] != 0 && temp_tile[i-current_row][j-current_column] != undefined)
+				{
+					board[i][j]+=10;
+				}
+			}
+		}
+	*/
+	
+	//掉落預顯示的狀況設想
+	//每一縱行中最高的會是降落點
+	
+	//aggregate_height[0~9]
+	//aggregate_height[current_column+temp_tile_left]
+	
+	// -     -
+	// --   --
+	//  -   -
+	
+	// -
+	// -  -  -
+	//-- -------
+	
+	// 3
+	
+	// 16  -
+	// 17  --
+	// 18   -
+	// 19  -
+	
+	
+	if(aggregate_height[current_column+temp_tile_left] > 0)
+	{
+		console.log("i="+(tetris_height-aggregate_height[current_column+temp_tile_left]));
+		
+		for(var i=tetris_height-aggregate_height[current_column+temp_tile_left];i<=tetris_height-aggregate_height[current_column+temp_tile_left]+temp_tile_bottom;i++)
+		{
+			for(var j=current_column;j<=current_column+temp_tile_right;j++)
+			{
+				//if(temp_tile[i-current_row][j-current_column] != 0 && temp_tile[i-current_row][j-current_column] != undefined)
+				if(temp_tile[i-tetris_height-aggregate_height[current_column+temp_tile_left]][j-current_column] != 0 && temp_tile[i-tetris_height-aggregate_height[current_column+temp_tile_left]][j-current_column] != undefined)
+				{
+					ctx.fillStyle="#FF0000";
+					ctx.fillRect(250+30*j,20+25*i,30,25);
+				}
+			}
+		}
+	}
+	else
+	{
+		//在最底層顯示(雖然目前判斷會有問題)
+		
+		//最底層的意思就是  若佔有三縱行(高度為3)  i=19 20 21
+		
+		// 22- 2    20 < 22   20  21 
+
+		//目前重繪順序有問題  尚待修正
+		//不,
+		//好像是strokeRect跟fillRect同時用會不如預期
+		//(fillRect的Z軸感覺優先順序較高)
+		//這下傷腦筋了,似乎不能直接用現有函式來處理
+		//先用fillRect確定功能能實作正常
+		//再專心處理ghost piece顯示問題
+		//用框線顯示是比較理想的
+		//手邊有的競技型俄羅斯方塊印象中是用框線
+		
+		for(var i=tetris_height-temp_tile_bottom-1;i<tetris_height;i++)
+		{
+			for(var j=current_column;j<=current_column+temp_tile_right;j++)
+			{			
+				// 19 - 22 + 2
+				var test_num=i-tetris_height+temp_tile_bottom;
+				//alert(i);
+				if(temp_tile[i-tetris_height+temp_tile_bottom+1][j-current_column] != 0 && temp_tile[i-tetris_height+temp_tile_bottom+1][j-current_column] != undefined)
+				{
+					/*ctx.strokeStyle = 'red';
+					ctx.strokeRect(250+30*j,100+25*(i),30,25);*/
+					ctx.fillStyle="#FF0000";
+					ctx.fillRect(250+30*j,20+25*i,30,25);
+				}
+			}
+		}
+	}
+}
+
+
+function down()
+{
+	timer();
+}
+
+function game_over()
+{
+	alert("遊戲結束");
+	clearInterval(down_timer);
+	document.removeEventListener("keydown",keydown_related,false);
+}
+
+</script>
+</body>
+</html>
