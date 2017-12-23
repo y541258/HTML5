@@ -1,0 +1,53 @@
+<!DOCTYPE>
+<meta charset="utf-8"> 
+<html>
+<head>
+</head>
+
+<body>
+
+العَرَبِيَّة<br>
+測試<br>
+อักษรไทย<br>
+ру́сский язы́к<br>
+
+<canvas id="canvas" width="800" height="600" ></canvas>
+<div id="div_test"></div>
+<script>
+
+var canvas_element = document.getElementById("canvas");
+var ctx=canvas_element.getContext("2d");
+ctx.fillStyle="#000000";
+ctx.fillRect(0, 0, 800, 600);
+
+var tetris_width = 10;
+var tetris_height = 22;
+
+
+var tile_width=30;
+var tile_height=25;
+var tile_center_left=(canvas_element.width/2)-((tile_width*tetris_width)/2);
+var tile_center_top=(canvas_element.height/2)-((tile_height*tetris_height)/2);
+
+//alert(tile_center_top);
+
+var board = [];
+
+for(i=0;i<tetris_height;i++)
+{
+    board[i] = [];
+    for(j=0;j<tetris_width;j++)
+    {
+        board[i][j]=0;
+        ctx.fillStyle="#333333";
+        ctx.fillRect(tile_center_left+tile_width*j,tile_center_top+tile_height*i,30,25);
+    }
+}
+
+
+
+document.getElementById("div_test").innerHTML="測試";
+
+</script>
+</body>
+</html>
