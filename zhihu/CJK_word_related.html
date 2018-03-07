@@ -1,0 +1,58 @@
+﻿<!DOCTYPE html>
+
+<html>
+<head>
+<meta charset="UTF-16"/>
+</head>
+<body>
+
+<div id="div_test"></div>
+<div id="div_alert"></div>
+
+<script>
+//搜尋引擎關鍵字,div font
+//然後就找到
+//https://www.sitepoint.com/community/t/div-class-font-size-and-positioning-question/7797
+//(↑上述這註解代表我抄襲或者說借鑒的程式碼來源,個人偏好是說抄襲)
+document.getElementById("div_test").align= "middle";
+document.getElementById("div_test").style= "color:green;font-size:60px";
+//加在<script>中,前段也就是在印出六十四卦前應該可以看出些差異
+document.getElementById("div_alert").align= "middle";
+document.getElementById("div_alert").style= "color:red;font-size:60px";
+
+
+//這段抄自https://stackoverflow.com/questions/7126384/expressing-utf-16-unicode-characters-in-javascript
+
+function getUnicodeCharacter(cp) {
+
+    if (cp >= 0 && cp <= 0xD7FF || cp >= 0xE000 && cp <= 0xFFFF) {
+        return String.fromCharCode(cp);
+    } else if (cp >= 0x10000 && cp <= 0x10FFFF) {
+
+        // we substract 0x10000 from cp to get a 20-bits number
+        // in the range 0..0xFFFF
+        cp -= 0x10000;
+
+        // we add 0xD800 to the number formed by the first 10 bits
+        // to give the first byte
+        var first = ((0xffc00 & cp) >> 10) + 0xD800
+
+        // we add 0xDC00 to the number formed by the low 10 bits
+        // to give the second byte
+        var second = (0x3ff & cp) + 0xDC00;
+
+        return String.fromCharCode(first) + String.fromCharCode(second);
+    }
+}
+
+random_han_1_unicode = parseInt(Math.random()*20902);
+random_han_2_unicode = parseInt(Math.random()*20902);
+while(random_han_1_unicode == random_han_2_unicode)
+{
+ random_han_2_unicode = parseInt(Math.random()*20902);
+}
+
+document.getElementById("div_test").innerHTML+= getUnicodeCharacter(random_han_1_unicode+0x4E00) + " " + getUnicodeCharacter(random_han_2_unicode+0x4E00);
+</script>
+</body>
+</html>
