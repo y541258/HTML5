@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<meta charset="utf-8"> 
+<html>
+<body>
+
+<canvas id="myCanvas" width="640" height="640"></canvas>
+<div id="div_display"></div>
+
+<script>
+//參考網頁http://www.w3school.com.cn/tags/canvas_getimagedata.asp
+var c=document.getElementById("myCanvas");
+var ctx=c.getContext("2d");
+
+var img= new Image();
+img.src="魂魄妖夢.png";
+ctx.drawImage(img,0,0,img.width,img.height);
+var imgData=ctx.getImageData(0,0,img.width,img.height);
+
+for (var i=0;i<imgData.data.length;i++)
+{
+  if(imgData.data[i]>128)
+  {
+   imgData.data[i]=255;
+  }
+  else
+  {
+   imgData.data[i]=0;
+  }
+}
+ctx.putImageData(imgData,300,0);
+
+for (var i=0;i<imgData.data.length;i+=4)
+{
+  if(imgData.data[i]>128 && imgData.data[i+1]>128 && imgData.data[i+2]>128)
+  {
+   imgData.data[i]=255;
+   imgData.data[i+1]=255;
+   imgData.data[i+2]=255;
+  }
+  else
+  {
+   imgData.data[i]=0;
+   imgData.data[i+1]=0;
+   imgData.data[i+2]=0;
+  }
+}
+
+ctx.putImageData(imgData,0,300);
+
+var imgData=ctx.getImageData(0,0,img.width,1);
+for (var i=0;i<imgData_one_line.data.length;i+=4)
+{
+  document.getElementById("div_display").innerHTML += imgData.data[i] + " " + imgData.data[i+1] + " " + imgData.data[i+2] +" " + imgData.data[i+3];
+  document.getElementById("div_display").innerHTML += "    ";
+  if(i%16==0)
+      document.getElementById("div_display").innerHTML += "<br>";
+}
+</script>
+
+</body>
+</html>
