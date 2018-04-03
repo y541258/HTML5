@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<meta charset="utf-8"> 
+<html>
+<body>
+
+<canvas id="myCanvas" width="640" height="640"></canvas>
+<div id="div_display"></div>
+
+<script src="jquery-1.11.1.js"></script>
+
+<script>
+//參考網頁http://www.w3school.com.cn/tags/canvas_getimagedata.asp
+var c=document.getElementById("myCanvas");
+var ctx=c.getContext("2d");
+
+var bitmap_size;
+var uint8ClampedArray;
+
+var text_array=[];
+var temp_array=[];
+var compute_array=[];
+var offset=0;
+
+$(document).ready(
+            function ()
+            {
+                $.get('youmu.txt', function(data)
+                {
+                    text_array.push(data);
+                    text_array=text_array.toString().split('\r\n');
+                    temp_array=text_array[0].split(" ");
+
+					bitmap_size=parseInt(temp_array[0]);
+					alert(bitmap_size*(text_array.length-1)*4);
+					uint8ClampedArray = new Uint8ClampedArray(bitmap_size*(text_array.length-1)*4);
+					
+					
+                    for(var i=1;i<text_array.length;i++)
+                    {
+                        temp_array=text_array[i].split(" ");
+						alert(temp_array[0]);
+						for(j=0;j<temp_array.length;j+=2)
+						{
+						 console.log(temp_array[j+1]);
+						 if(temp_array[j]=="B")
+						 {
+						  for(k=0;k<parseInt(temp_array[j+1]);k++)
+						  {
+						   uint8ClampedArray[offset]=0;
+						   uint8ClampedArray[offset+1]=0;
+						   uint8ClampedArray[offset+2]=0;
+						   uint8ClampedArray[offset+3]=255;
+						   offset+=4;
+						  }
+     					 }
+						 else if(temp_array[j]=="W")
+						 {
+						  for(k=0;k<parseInt(temp_array[j+1]);k++)
+						  {
+						   uint8ClampedArray[offset]=255;
+						   uint8ClampedArray[offset+1]=255;
+						   uint8ClampedArray[offset+2]=255;
+						   uint8ClampedArray[offset+3]=255;
+						   offset+=4;
+						  }
+     					 }
+						}
+                    }
+
+                 var draw_imgData = new ImageData(uint8ClampedArray,bitmap_size,text_array.length-1);
+
+                 ctx.putImageData(draw_imgData,0,0);
+                },'text');
+            });
+</script>
+
+</body>
+</html>

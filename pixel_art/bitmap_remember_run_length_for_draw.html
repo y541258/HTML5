@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<meta charset="utf-8"> 
+<html>
+<body>
+
+<canvas id="myCanvas" width="640" height="640"></canvas>
+<div id="div_display"></div>
+
+<script>
+//參考網頁http://www.w3school.com.cn/tags/canvas_getimagedata.asp
+var c=document.getElementById("myCanvas");
+var ctx=c.getContext("2d");
+
+var img= new Image();
+img.src="魂魄妖夢_黑白版.png";
+ctx.drawImage(img,0,0,img.width,img.height);
+
+var imgData=ctx.getImageData(0,0,img.width,img.height);
+//要背第二行的話是
+//var imgData=ctx.getImageData(0,1,img.width,1);
+
+var runlength_type = null;
+var runlength_num = 1;
+var line_count=0;
+
+for (var i=0;i<imgData.data.length;i+=4)
+{
+  line_count++;
+  if(imgData.data[i]==0)
+  {
+   if(!runlength_type)
+   {
+    runlength_type = "黑";
+    document.getElementById("div_display").innerHTML += "B";
+   }
+   else if(runlength_type == "黑")
+   {
+    runlength_num++;
+   }
+   else if(runlength_type == "白")
+   {
+    document.getElementById("div_display").innerHTML += " "+runlength_num+" B";
+    runlength_num=1;
+   }
+   runlength_type = "黑";
+  }
+  
+  if(imgData.data[i]==255)
+  {
+   if(!runlength_type)
+   {
+    runlength_type = "白";
+    document.getElementById("div_display").innerHTML += "W";
+   }
+   else if(runlength_type == "白")
+   {
+    runlength_num++;
+   }
+   else if(runlength_type == "黑")
+   {
+    document.getElementById("div_display").innerHTML += " "+runlength_num+" W";
+    runlength_num=1;
+   }
+   runlength_type = "白";
+  }
+
+  if(line_count == 242)
+  {
+      line_count=0;
+	  runlength_type = null;
+      document.getElementById("div_display").innerHTML += " "+runlength_num+"<br>";
+	  runlength_num = 1;
+  }
+}
+
+</script>
+
+</body>
+</html>
