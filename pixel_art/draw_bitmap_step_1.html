@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<meta charset="utf-8"> 
+<html>
+<body>
+
+<canvas id="myCanvas" width="640" height="640"></canvas>
+<div id="div_display"></div>
+
+<script>
+//參考網頁http://www.w3school.com.cn/tags/canvas_getimagedata.asp
+var c=document.getElementById("myCanvas");
+var ctx=c.getContext("2d");
+
+var uint8ClampedArray = new Uint8ClampedArray(256);
+
+for(i=0;i<256;i+=4)
+{
+ uint8ClampedArray[i+3]=255;
+}
+
+var draw_imgData = new ImageData(uint8ClampedArray,8,8);
+
+ctx.putImageData(draw_imgData,0,0);
+</script>
+
+</body>
+</html>
