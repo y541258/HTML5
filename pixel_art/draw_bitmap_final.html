@@ -31,17 +31,14 @@ $(document).ready(
                     temp_array=text_array[0].split(" ");
 
 					bitmap_size=parseInt(temp_array[0]);
-					alert(bitmap_size*(text_array.length-1)*4);
 					uint8ClampedArray = new Uint8ClampedArray(bitmap_size*(text_array.length-1)*4);
 					
 					
                     for(var i=1;i<text_array.length;i++)
                     {
                         temp_array=text_array[i].split(" ");
-						alert(temp_array[0]);
 						for(j=0;j<temp_array.length;j+=2)
 						{
-						 console.log(temp_array[j+1]);
 						 if(temp_array[j]=="B")
 						 {
 						  for(k=0;k<parseInt(temp_array[j+1]);k++)
