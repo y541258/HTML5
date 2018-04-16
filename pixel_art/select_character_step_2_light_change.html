@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<meta charset="utf-8"> 
+<html>
+<body>
+
+<style>
+canvas{
+ cursor:none;
+}
+</style>
+
+<script src="jquery-1.11.1.js">
+//導入jQuery函式庫,主要是為了引入劇情文字檔用
+//用on函式時也要用到jQuery
+</script>
+
+<canvas id="myCanvas" width="640" height="640"></canvas>
+<div id="div_display"></div>
+
+<script>
+//參考網頁http://www.w3school.com.cn/tags/canvas_getimagedata.asp
+var c=document.getElementById("myCanvas");
+var ctx=c.getContext("2d");
+
+var img= new Image();
+img.src="魂魄妖夢.png";
+
+var light_size=15;
+var light_left=115;
+var light_top=110;
+
+var time_count=0;
+
+
+var timer_1=setInterval(light_size_change,15);
+
+function re_draw()
+{
+ ctx.drawImage(img,0,0,img.width,img.height);
+ var imgData_2=ctx.getImageData(0,0,img.width,img.height);
+
+ for (var offset=0;offset<light_top*img.width*4;offset+=4)
+ {
+   imgData_2.data[offset]-=235;
+   imgData_2.data[offset+1]-=235;
+   imgData_2.data[offset+2]-=235;
+   imgData_2.data[offset+3]=255;
+ }
+
+
+ for(var i=0;i<light_size/2+0.5;i++)
+ {
+    for(var offset=light_top*img.width*4+i*img.width*4;
+    offset<light_top*img.width*4+(light_left+(light_size-1)/2-i)*4+i*img.width*4;
+	offset+=4)
+	{
+	 imgData_2.data[offset]-=235;
+	 imgData_2.data[offset+1]-=235;
+	 imgData_2.data[offset+2]-=235;
+	 imgData_2.data[offset+3]=255;
+	}
+	
+	for(var offset=light_top*img.width*4+(light_left+(light_size-1)/2-i)*4+i*img.width*4;
+	offset<light_top*img.width*4+(light_left+(light_size-1)/2)*4+i*img.width*4+(i+1)*4;
+	offset+=4)
+	{
+	//日後微調
+	}
+	
+	for(var offset=light_top*img.width*4+(light_left+(light_size-1)/2)*4+i*img.width*4+(i+1)*4;
+	offset<light_top*img.width*4+img.width*(i+1)*4;
+	offset+=4)
+	{
+	 imgData_2.data[offset]-=235;
+	 imgData_2.data[offset+1]-=235;
+	 imgData_2.data[offset+2]-=235;
+	 imgData_2.data[offset+3]=255;
+	}
+ }
+
+ for(var i=light_size/2+0.5,j=1;i<light_size;i++,j++)
+ {
+ 	for(var offset=light_top*img.width*4+i*img.width*4;
+	offset<light_top*img.width*4+(light_left+j)*4+i*img.width*4;
+	offset+=4)
+	{
+	 imgData_2.data[offset]-=235;
+	 imgData_2.data[offset+1]-=235;
+	 imgData_2.data[offset+2]-=235;
+	 imgData_2.data[offset+3]=255;
+	}
+	
+	for(var offset=light_top*img.width*4+(light_left+j)*4+i*img.width*4;
+	offset<light_top*img.width*4+(light_left+j)*4+i*img.width*4+(light_size-j*2)*4;
+	offset+=4)
+	{
+	//日後微調
+	}
+	
+	for(var offset=light_top*img.width*4+(light_left+j)*4+i*img.width*4+(light_size-j*2)*4;
+	offset<light_top*img.width*4+img.width*(i+1)*4;
+	offset+=4)
+	{
+	 imgData_2.data[offset]-=235;
+	 imgData_2.data[offset+1]-=235;
+	 imgData_2.data[offset+2]-=235;
+	 imgData_2.data[offset+3]=255;
+	}
+ }
+
+ for(var offset=(light_top+light_size)*img.width*4;offset<imgData_2.data.length;offset+=4)
+ {
+	imgData_2.data[offset]-=235;
+	imgData_2.data[offset+1]-=235;
+	imgData_2.data[offset+2]-=235;
+	imgData_2.data[offset+3]=255;
+ }
+
+ ctx.putImageData(imgData_2,0,0);
+ 
+}
+
+re_draw();
+
+c.addEventListener("mousemove",light_move,false);
+ 
+var tempX,tempY;
+ 
+function light_move(e)
+{
+    light_size=15;
+
+	clearInterval(timer_1);
+	time_count=0
+	
+	tempX=e.pageX- c.offsetLeft;
+	tempY=e.pageY- c.offsetTop;
+	
+	light_left=tempX-(light_size/2+0.5);
+	light_top=tempY-(light_size/2+0.5);
+	console.log(light_left + " " +light_top);
+	re_draw();
+	
+	timer_1 =setInterval(light_size_change,15);
+}
+
+function light_size_change()
+{
+ time_count++;
+ 
+ if(time_count>=10)
+ {
+  time_count=0;
+  light_size+=2;
+  light_left-=1;
+  light_top-=1;
+  
+  if(light_size>230) //這邊數值適當調整或者去掉這段if可以讓全圖變亮
+  {
+   clearInterval(timer_1);
+  }
+  
+  re_draw();
+ }
+ 
+}
+
+</script>
+
+</body>
+</html>
