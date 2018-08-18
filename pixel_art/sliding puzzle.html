@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<meta charset="utf-8"> 
+<html>
+<body>
+
+<script src="jquery-1.11.1.js"></script>
+<canvas id="myCanvas" width="640" height="480"></canvas>
+
+<script>
+var c=document.getElementById("myCanvas");
+var ctx=c.getContext("2d");
+
+ctx.fillStyle="#FFFFFF";
+
+var img= new Image();
+img.src="魂魄妖夢_big.png";
+
+//等圖完整載入後再繪製,不然會有空白畫面,
+//不寫的話重新整理也可以
+//不過圖越大越有可能重新整理後還是沒圖片
+//不寫的話要重新整理到圖載完時才會有畫面
+img.onload =
+function()
+{
+ re_draw();
+}
+
+var finish_num=0;
+
+var board_width = 4;
+var board_height = 4;
+
+var board = [];
+
+for(var i=0;i<board_width*board_height-1;i++)
+{
+ board[i]=i;
+}
+board[board_width*board_height-1]=-1;
+
+shuffle(board);
+
+function re_draw()
+{
+ ctx.fillRect(0,0,c.width,c.height);
+
+ for(var i=0;i<board_width*board_height;i++)
+ {
+    //不除4和取4的餘數的話,會超過畫布範圍變成一片空白
+	//不轉整數的話,執行畫面看起來會有些扭曲
+    //ctx.drawImage(img,board[i]%4*c.width/4,parseInt(board[i]/4)*c.height/4,c.width/4,c.height/4,parseInt(i/4)*c.width/4,i%4*c.height/4,c.width/4,c.height/4);
+    ctx.drawImage(img,board[i]%4*c.width/4,parseInt(board[i]/4)*c.height/4,c.width/4,c.height/4,i%4*c.width/4,parseInt(i/4)*c.height/4,c.width/4,c.height/4);
+ }
+ 
+ finish_num=0;
+ 
+ for(var i=0;i<board_width*board_height-1;i++)
+ {
+  if(board[i]==i)
+  {
+   finish_num++;
+  }
+ }
+ 
+ if(finish_num==15)
+ {
+  alert("拼圖完成");
+  board[board_width*board_height-1]=15;
+  ctx.drawImage(img,board[board_width*board_height-1]%4*c.width/4,parseInt(board[board_width*board_height-1]/4)*c.height/4,c.width/4,c.height/4,i%4*c.width/4,parseInt(i/4)*c.height/4,c.width/4,c.height/4);
+ }
+}
+
+function shuffle(array) {
+  var m = array.length, t, i;
+  while (m) {
+    i = Math.floor(Math.random() * m--);
+    t = array[m];
+    array[m] = array[i];
+    array[i] = t;
+  }
+}
+
+function click_region(id,left,top,width,height)
+{
+	this.id=id;
+
+	var self=this;
+
+	this.left=left;
+	this.top=top;
+	this.width=width;
+	this.height=height;
+	
+	$(c).on('handleClick', function(e, mouse) {
+        if (self.left < mouse.x && 
+            self.left + self.width > mouse.x && 
+            self.top < mouse.y && 
+            self.top + self.height > mouse.y) {
+			if((self.id-1) % board_width !=board_width-1 &&
+			board[self.id-1] == -1)
+			{
+			 board[self.id-1] = board[self.id];
+			 board[self.id] = -1;
+			 re_draw();
+			}
+			
+			if(board[self.id-4] == -1)
+			{
+			 board[self.id-4] = board[self.id];
+			 board[self.id] = -1;
+			 re_draw();
+			}
+			
+			if((self.id+1) % board_width != 0 &&
+			board[self.id+1] == -1)
+			{
+			 board[self.id+1] = board[self.id];
+			 board[self.id] = -1;
+			 re_draw();
+			}
+			
+			if(board[self.id+4] == -1)
+			{
+			 board[self.id+4] = board[self.id];
+			 board[self.id] = -1;
+			 re_draw();
+			}
+			
+			if((self.id-1) % board_width !=board_width-1 &&
+			board[self.id-1] == -1)
+			{
+			 board[self.id-1] = board[self.id];
+			 board[self.id] = -1;
+			 re_draw();
+			}
+        } 
+    });
+}
+
+var elements=[];
+
+for (var i = 0; i < board_width*board_height; i++)
+{
+	elements.push(new click_region(i,i%4*c.width/4,parseInt(i/4)*c.height/4,c.width/4,c.height/4));
+}
+	
+$(c).on('click', function(e) { 
+	var mouse= { 
+        x: e.pageX - c.offsetLeft, 
+        y: e.pageY - c.offsetTop
+	} 
+         
+    //fire off synthetic event containing mouse coordinate info 
+    $(c).trigger('handleClick', [mouse]);
+ });
+
+</script>
+
+</body>
+</html>
