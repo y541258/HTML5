@@ -22,6 +22,6 @@ func hello(res http.ResponseWriter, req *http.Request) {
 }
 func main() {
     http.HandleFunc("/hello", hello)
-    http.ListenAndServe(":443", nil)
-    //443是https,若在自己電腦上先測的話可以先改為80,也就是http port
+    http.ListenAndServe(":8080", nil)
+    //443是https,若在自己電腦上先測的話可以先改為80,也就是http port,但不能直接透過改成443藉此直連GCP
 }
