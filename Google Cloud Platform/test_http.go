@@ -24,4 +24,5 @@ func main() {
     http.HandleFunc("/hello", hello)
     http.ListenAndServe(":8080", nil)
     //443是https,若在自己電腦上先測的話可以先改為80,也就是http port,但不能直接透過改成443藉此直連GCP
+    //奇怪的是:8080不用輸入port,GCP網頁也能直連,也許有偵測使用哪個非固定用途port listen吧
 }
