@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<meta charset="utf-8"> 
+<html>
+<body>
+
+<script src="jquery-3.3.1.js"></script>
+
+<canvas id="myCanvas" width="640" height="480"></canvas>
+
+<script>
+
+var ws;
+    $(function(){
+        link();
+    })
+    function link () {
+	    ws = new WebSocket('ws://' + window.location.host + '/ws');
+        //ws = new WebSocket("ws://127.0.0.1:8000/ws");//连接服务器
+		ws.binaryType = 'arraybuffer';
+        ws.onopen = function(event){
+            console.log(event);
+            alert('連接');
+        };
+		
+        ws.onmessage = function (event) {
+
+		var temp=[];
+		var dv = new DataView(event.data);
+		var textDecoder = new TextDecoder('utf-8');
+		str = textDecoder.decode(dv);
+		console.log(str);
+		temp = str.split(',');
+
+		re_draw();
+        
+        ws.onclose = function(event){alert("與伺服器連線中斷");};
+        ws.onerror = function(event){alert("WebSocket Error");};
+    }
+}
+
+var c=document.getElementById("myCanvas");
+var ctx=c.getContext("2d");
+
+ctx.fillStyle="#FFFFFF";
+
+re_draw();
+
+function re_draw()
+{
+ ctx.fillRect(0,0,c.width,c.height);
+
+ ctx.fillStyle="#000000"; 
+ 
+ requestURL ="http://192.168.0.107:8000/slide/store_item.json";
+ console.log(requestURL);
+ //$.getJSON(requestURL,function(){
+ $.getJSON("store_item.json",function(){
+ console.log("success");
+ })
+ .done(function(data) {
+ var items=[];
+ console.log(data);
+  $.each( data, function( key, val ) {
+    items.push(  key + " " + val[9].name);
+	ctx.font="40px 標楷體";
+	ctx.fillText(val[9].name ,50,50);
+	ctx.fillText(val[9].price ,50,100);
+	})
+ })
+ 
+ .fail(function(jqXHR, textStatus, errorThrown) { alert('getJSON request failed! ' + textStatus); })
+}
+
+function shuffle(array) {
+  var m = array.length, t, i;
+  while (m) {
+    i = Math.floor(Math.random() * m--);
+    t = array[m];
+    array[m] = array[i];
+    array[i] = t;
+  }
+}
+
+function click_region(id,left,top,width,height)
+{
+	this.id=id;
+
+	var self=this;
+
+	this.left=left;
+	this.top=top;
+	this.width=width;
+	this.height=height;
+	
+	$(c).on('handleClick', function(e, mouse) {
+        if (self.left < mouse.x && 
+            self.left + self.width > mouse.x && 
+            self.top < mouse.y && 
+            self.top + self.height > mouse.y) {
+
+        } 
+    });
+}
+
+var elements=[];
+
+//elements.push(new click_region(i,i%4*c.width/4,parseInt(i/4)*c.height/4,c.width/4,c.height/4));
+
+	
+$(c).on('click', function(e) { 
+	var mouse= { 
+        x: e.pageX - c.offsetLeft, 
+        y: e.pageY - c.offsetTop
+	} 
+         
+    //fire off synthetic event containing mouse coordinate info 
+    $(c).trigger('handleClick', [mouse]);
+ });
+
+</script>
+
+</body>
+</html>
