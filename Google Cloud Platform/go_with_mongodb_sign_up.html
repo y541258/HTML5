@@ -1,0 +1,35 @@
+﻿<html>
+<head><title>Sign Up</title>
+</head>
+<body>
+
+<script>
+  function check(){
+  
+    if(document.send.ID.value.length < 4){
+      alert('帳號不符格式');
+      document.send.ID.focus();
+      return false;
+    }
+	
+    if(document.send.password.value.length < 4){
+      alert('密碼不符格式');
+      document.send.password.focus();
+      return false;
+    }
+
+    return true;
+  }
+  </script>
+
+<form method="POST" name="send" onsubmit="return check()">
+帳號:<br />
+<input type="text" name="ID" id="ID" placeholder="帳號要四碼以上">
+<br />
+密碼:<br />
+<input type="text" name="password" id="password" placeholder="密碼要四碼以上">
+<br />
+<input type="submit" name="button" value="OK">
+</form>
+</body>
+</html>
