@@ -29,6 +29,12 @@ func UpdateStoreIn2Min(){
 	fmt.Println(time.Now())
 	 
 	ticker := time.NewTicker(time.Millisecond * 500)
+		
+	// 8/29修正,不這樣寫會從第一次計時時才執行
+	 rand.Shuffle(len(a), func(i, j int) {
+			a[i], a[j] = a[j], a[i]
+			})
+			fmt.Println(a,time.Now())
 	 
 	defer ticker.Stop()
 	done := make(chan bool)
