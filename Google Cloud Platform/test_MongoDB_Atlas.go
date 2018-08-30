@@ -6,7 +6,9 @@ import (
 	"io"
 	"fmt"
 	"time"
+	"sync"
 	"math/rand"
+	"strconv"
 	
 	"github.com/gorilla/websocket"
 
@@ -16,7 +18,10 @@ import (
 
 var clients = make(map[*websocket.Conn]bool) // connected clients
 var broadcast = make(chan []byte)           // broadcast channel
-var item = make(chan [5]int)
+var wg sync.WaitGroup
+
+var a []int
+var temp_a []byte = []byte{48,44,49,44,50,44,51,44,52}
 
 var (
     upgrader = websocket.Upgrader {
@@ -143,7 +148,7 @@ func signupPage(res http.ResponseWriter, req *http.Request) {
 	ID := req.FormValue("ID")
 	password := req.FormValue("password")
 	
-	client, err := mongo.Connect(context.Background(), "mongodb+srv://USERNAME:PASSWORD@USERNAME-keqxy.gcp.mongodb.net/admin", nil)
+	client, err := mongo.Connect(context.Background(), "client, err := mongo.Connect(context.Background(), "mongodb+srv://USERNAME:PASSWORD@USERNAME-keqxy.gcp.mongodb.net/admin", nil)", nil)
 	db := client.Database("GCP_test")
 	coll := db.Collection("GCP_test")
 
@@ -190,7 +195,7 @@ func loginPage(res http.ResponseWriter, req *http.Request) {
 		return
 	}	
 	
-	client, err := mongo.Connect(context.Background(), "mongodb+srv://USERNAME:PASSWORD@USERNAME-keqxy.gcp.mongodb.net/admin", nil)
+	client, err := mongo.Connect(context.Background(), "client, err := mongo.Connect(context.Background(), "mongodb+srv://USERNAME:PASSWORD@USERNAME-keqxy.gcp.mongodb.net/admin", nil)", nil)
 	db := client.Database("GCP_test")
 	coll := db.Collection("GCP_test")
 
@@ -231,6 +236,27 @@ func loginPage(res http.ResponseWriter, req *http.Request) {
 	return
 }
 
+func storePage(res http.ResponseWriter, req *http.Request) {
+	if req.Method != "POST" {
+		http.ServeFile(res, req, "store.html")
+		return
+	}	
+}
+
+func jsPage(res http.ResponseWriter, req *http.Request) {
+	if req.Method != "POST" {
+		http.ServeFile(res, req, "jquery-3.3.1.js")
+		return
+	}	
+}
+
+func jsonPage(res http.ResponseWriter, req *http.Request) {
+	if req.Method != "POST" {
+		http.ServeFile(res, req, "store_item.json")
+		return
+	}	
+}
+
 type Player struct {
 	Name  string `bson:"name"`
 	Password []string `bson:"password"`
@@ -246,6 +272,7 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 	defer ws.Close()
 
 	clients[ws] = true
+	broadcast <- temp_a
 
 	for {
 		var msg []byte
@@ -262,40 +289,75 @@ func handleMessages() {
 		for client := range clients {
 		 client.WriteMessage(websocket.BinaryMessage,msg)
 		}
+		
+		fmt.Println(msg)
 	}
 }
 
 func UpdateStoreIn2Min() {
-	rand.Seed(time.Now().UnixNano())
+	defer wg.Done()
 	
-	var i,j int
-	var temp int
-	var flag bool = true
+	for i:=0;i<30;i++{
+	 a=append(a,i)
+	}
 	
-	for i=0; i<5; i++{
-		temp=rand.Intn(30)
-		item[i]=temp
-		
-		for flag{
-			flag=true
-			for j=0; j<i; j++{
-				if temp==item[j]{
-					flag=false
-				}
-			temp=rand.Intn(30)
-			item[i]=temp
+	t := time.Now()
+	rounded := time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute()+1, 0, 0, t.Location())
+	 
+	time.AfterFunc(rounded.Sub(t),func() {
+	 
+	ticker := time.NewTicker(time.Second * 10)
+	
+	rand.Shuffle(len(a), func(i, j int) {
+			a[i], a[j] = a[j], a[i]
+			})
+			fmt.Println(a)
+			
+			temp_a=temp_a[:0]
+			
+			for i:=0;i<5;i++{
+				temp_a=append(temp_a,[]byte(strconv.Itoa(a[i]))...)
+				temp_a=append(temp_a,[]byte(",")...)
 			}
+			temp_a=temp_a[:len(temp_a)-1]
+			broadcast<-temp_a
+	 
+	defer ticker.Stop()
+	done := make(chan bool)
+	 
+	go func() {
+		time.Sleep(60 * time.Second)
+		done <- true
+	}()
+	
+	for {
+		select {
+		case <-done:
+			fmt.Println("Done!")
+			return
+		case ti := <-ticker.C:
+			rand.Shuffle(len(a), func(i, j int) {
+			a[i], a[j] = a[j], a[i]
+			})
+			fmt.Println(a,ti)
+			
+			temp_a=temp_a[:0]
+			
+			for i:=0;i<5;i++{
+				temp_a=append(temp_a,[]byte(strconv.Itoa(a[i]))...)
+				temp_a=append(temp_a,[]byte(",")...)
+			}
+			temp_a=temp_a[:len(temp_a)-1]
+			broadcast<-temp_a
 		}
 	}
-	
-	for i=0; i<5; i++{
-		fmt.Println(item[i])
-	}
-	
-	time.Sleep(time.Second * 10)
+})
 }
 
 func main() {
+	rand.Seed(time.Now().UnixNano())
+	wg.Add(1)
+	
 	http.HandleFunc("/ws",handleConnections)
     http.HandleFunc("/hello", hello)
 	http.HandleFunc("/server_error", server_error)
@@ -303,9 +365,14 @@ func main() {
 	http.HandleFunc("/login_fail", login_fail)
 	http.HandleFunc("/sign_up", signupPage)
 	http.HandleFunc("/login", loginPage)
+	http.HandleFunc("/store", storePage)
+	http.HandleFunc("/jquery-3.3.1.js", jsPage)
+	http.HandleFunc("/store_item.json", jsonPage)
 	
 	go handleMessages()
 	go UpdateStoreIn2Min()
+	
+	wg.Wait()
 	
     http.ListenAndServe(":8080", nil)
 }
