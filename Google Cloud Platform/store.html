@@ -8,6 +8,10 @@
 <canvas id="myCanvas" width="640" height="480"></canvas>
 
 <script>
+var items_name=[];
+var items_price=[];
+
+var now_store_item=[];
 
 var ws;
     $(function(){
@@ -23,13 +27,12 @@ var ws;
         };
 		
         ws.onmessage = function (event) {
-
-		var temp=[];
+		
 		var dv = new DataView(event.data);
 		var textDecoder = new TextDecoder('utf-8');
 		str = textDecoder.decode(dv);
-		console.log(str);
-		temp = str.split(',');
+		
+		now_store_item = str.split(',');
 
 		re_draw();
         
@@ -43,32 +46,37 @@ var ctx=c.getContext("2d");
 
 ctx.fillStyle="#FFFFFF";
 
-re_draw();
 
-function re_draw()
-{
- ctx.fillRect(0,0,c.width,c.height);
-
- ctx.fillStyle="#000000"; 
- 
- requestURL ="http://192.168.0.107:8000/slide/store_item.json";
- console.log(requestURL);
- //$.getJSON(requestURL,function(){
  $.getJSON("store_item.json",function(){
  console.log("success");
  })
  .done(function(data) {
- var items=[];
- console.log(data);
   $.each( data, function( key, val ) {
-    items.push(  key + " " + val[9].name);
-	ctx.font="40px 標楷體";
-	ctx.fillText(val[9].name ,50,50);
-	ctx.fillText(val[9].price ,50,100);
+		for(var i=0;i<data.store_item.length;i++)
+		{
+			items_name.push(val[i].name);
+			items_price.push(val[i].price);
+		}
 	})
  })
  
- .fail(function(jqXHR, textStatus, errorThrown) { alert('getJSON request failed! ' + textStatus); })
+ .fail(function(jqXHR, textStatus, errorThrown) { alert('getJSON request failed! ' + textStatus); }) 
+ 
+function re_draw()
+{
+	ctx.fillStyle="#FFFFFF"; 
+
+	ctx.fillRect(0,0,c.width,c.height);
+
+	ctx.fillStyle="#000000";
+	ctx.font="40px 標楷體";
+
+	for(var i=0;i<5;i++)
+	{
+		ctx.fillText(items_name[now_store_item[i]] ,30+i*120,50);
+		ctx.fillText(items_price[now_store_item[i]] ,30+i*120,100);
+	}
+	
 }
 
 function shuffle(array) {
