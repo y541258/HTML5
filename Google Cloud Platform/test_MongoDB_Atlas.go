@@ -11,6 +11,7 @@ import (
 	"strconv"
 	
 	"github.com/gorilla/websocket"
+	"github.com/gorilla/securecookie"
 
 	"github.com/mongodb/mongo-go-driver/mongo"
 	"github.com/mongodb/mongo-go-driver/bson"
@@ -23,6 +24,13 @@ var wg sync.WaitGroup
 var a []int
 var temp_a []byte = []byte{48,44,49,44,50,44,51,44,52}
 
+var cookieHandler = securecookie.New(
+		securecookie.GenerateRandomKey(64),
+		securecookie.GenerateRandomKey(32))
+//請看http://www.gorillatoolkit.org/pkg/securecookie
+//第一個參數是必要的,建議是32或64 bytes長度
+//第二個參數是用來加密的,長度允許16,24,32 bytes,對應不同的AES加密法
+
 var (
     upgrader = websocket.Upgrader {
         ReadBufferSize:1024,
@@ -32,6 +40,44 @@ var (
         },
     }
 )
+
+func SetCookieHandler(user_name string,res http.ResponseWriter) {
+    value := map[string]string{
+        "ID": user_name,
+    }
+    if encoded, err := cookieHandler.Encode("cookie-name", value); err == nil {
+        cookie := &http.Cookie{
+            Name:  "cookie-name",
+            Value: encoded,
+            Path:  "/",
+        }
+        http.SetCookie(res, cookie)
+    }
+}
+
+func ReadCookieHandler(res http.ResponseWriter, req *http.Request) (user_name string){
+    if cookie, err := req.Cookie("cookie-name"); err == nil {
+        value := make(map[string]string)
+        if err = cookieHandler.Decode("cookie-name", cookie.Value, &value); err == nil {
+            user_name = value["ID"]
+			fmt.Println(user_name)
+			return user_name
+        }
+    }
+	
+	return
+}
+
+func clearCookie(res http.ResponseWriter) {
+     cookie := &http.Cookie{
+         Name:   "cookie-name",
+         Value:  "",
+         Path:   "/",
+         MaxAge: -1,
+		 Expires:time.Unix(1, 0),
+     }
+     http.SetCookie(res, cookie)
+ }
 
 func wsHandler(w http.ResponseWriter, r *http.Request) {
     var (
@@ -55,26 +101,6 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 
     ERR:
         wbsCon.Close()
-}
-
-func hello(res http.ResponseWriter, req *http.Request) {
-    res.Header().Set(
-        "Content-Type", 
-        "text/html",
-    )
-			
-	io.WriteString(
-        res, 
-        `<doctype html>
-<html>
-    <head>
-        <title>Hello World</title>
-    </head>
-    <body>
-        Hello World!
-    </body>
-</html>`,
-    )
 }
 
 func server_error(res http.ResponseWriter, req *http.Request) {
@@ -148,7 +174,7 @@ func signupPage(res http.ResponseWriter, req *http.Request) {
 	ID := req.FormValue("ID")
 	password := req.FormValue("password")
 	
-	client, err := mongo.Connect(context.Background(), "client, err := mongo.Connect(context.Background(), "mongodb+srv://USERNAME:PASSWORD@USERNAME-keqxy.gcp.mongodb.net/admin", nil)", nil)
+	client, err := mongo.Connect(context.Background(), "mongodb+srv://USERNAME:PASSWORD@USERNAME-keqxy.gcp.mongodb.net/admin", nil)
 	db := client.Database("GCP_test")
 	coll := db.Collection("GCP_test")
 
@@ -186,16 +212,18 @@ func signupPage(res http.ResponseWriter, req *http.Request) {
 			 return
 			}
 	
-	http.Redirect(res, req, "/hello", 302)
+	SetCookieHandler(ID,res)
+	http.Redirect(res, req, "/store", 302)
 }
 
 func loginPage(res http.ResponseWriter, req *http.Request) {
+	clearCookie(res)
 	if req.Method != "POST" {
 		http.ServeFile(res, req, "go_with_mongodb_login.html")
 		return
 	}	
 	
-	client, err := mongo.Connect(context.Background(), "client, err := mongo.Connect(context.Background(), "mongodb+srv://USERNAME:PASSWORD@USERNAME-keqxy.gcp.mongodb.net/admin", nil)", nil)
+	client, err := mongo.Connect(context.Background(), "mongodb+srv://USERNAME:PASSWORD@USERNAME-keqxy.gcp.mongodb.net/admin", nil)
 	db := client.Database("GCP_test")
 	coll := db.Collection("GCP_test")
 
@@ -227,7 +255,8 @@ func loginPage(res http.ResponseWriter, req *http.Request) {
 			
 			check,check_result:= elem.LookupElement("name").Value().StringValueOK()
  			if  check == ID && check_result {
-				http.Redirect(res, req, "/hello", 302)
+				SetCookieHandler(ID,res)
+				http.Redirect(res, req, "/store", 302)
 				return
 			}
 	}
@@ -238,8 +267,13 @@ func loginPage(res http.ResponseWriter, req *http.Request) {
 
 func storePage(res http.ResponseWriter, req *http.Request) {
 	if req.Method != "POST" {
-		http.ServeFile(res, req, "store.html")
-		return
+		if ReadCookieHandler(res,req) != ""{
+			http.ServeFile(res, req, "store.html")
+			return
+		} else {
+			http.Redirect(res, req, "/login", 302)
+			return
+		}
 	}	
 }
 
@@ -247,7 +281,7 @@ func jsPage(res http.ResponseWriter, req *http.Request) {
 	if req.Method != "POST" {
 		http.ServeFile(res, req, "jquery-3.3.1.js")
 		return
-	}	
+	}
 }
 
 func jsonPage(res http.ResponseWriter, req *http.Request) {
@@ -355,11 +389,11 @@ func UpdateStoreIn2Min() {
 }
 
 func main() {
+
 	rand.Seed(time.Now().UnixNano())
 	wg.Add(1)
 	
 	http.HandleFunc("/ws",handleConnections)
-    http.HandleFunc("/hello", hello)
 	http.HandleFunc("/server_error", server_error)
 	http.HandleFunc("/account_repeat", account_repeat)
 	http.HandleFunc("/login_fail", login_fail)
