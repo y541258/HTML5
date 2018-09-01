@@ -1,0 +1,26 @@
+  client, err := mongo.Connect(context.Background(), "mongodb+srv://USERNAME:PASSWORD@USERNAME-keqxy.gcp.mongodb.net/admin", nil)
+	db := client.Database("資料庫名稱")
+	coll := db.Collection("集合(資料表)名稱")
+
+	result, err := coll.UpdateMany(
+			context.Background(),
+      
+			bson.NewDocument(
+				bson.EC.String("name", "Tommy"),
+			),
+      //↑第二個參數是傳要修改的document(可想成關聯式資料庫中的記錄)長怎樣
+      
+			bson.NewDocument(
+				/*bson.EC.SubDocumentFromElements("$set",
+					bson.EC.String("password", "1234"),
+				),*/
+				/*bson.EC.SubDocumentFromElements("$set",
+					bson.EC.ArrayFromElements("phone",bson.VC.Int32(123)),
+				),*/
+				bson.EC.SubDocumentFromElements("$push",
+					bson.EC.Int32("phone",(789)),
+				),
+			),
+)
+
+	fmt.Println(result.MatchedCount)
