@@ -9,6 +9,7 @@ import (
 	"sync"
 	"math/rand"
 	"strconv"
+	"strings"
 	
 	"github.com/gorilla/websocket"
 	"github.com/gorilla/securecookie"
@@ -22,7 +23,10 @@ var broadcast = make(chan []byte)           // broadcast channel
 var wg sync.WaitGroup
 
 var a []int
-var temp_a []byte = []byte{48,44,49,44,50,44,51,44,52}
+//var temp_a []byte = []byte{48,44,49,44,50,44,51,44,52}
+var temp_a []byte = []byte("store,1,2,3,4,5")
+var temp_user []byte
+var user_n [5]string
 
 var cookieHandler = securecookie.New(
 		securecookie.GenerateRandomKey(64),
@@ -40,6 +44,14 @@ var (
         },
     }
 )
+
+func iinit() {
+	temp_user = []byte("user,,,,,")
+	
+	for i:=0;i<5;i++{
+		user_n[i]=""
+	}
+}
 
 func SetCookieHandler(user_name string,res http.ResponseWriter) {
     value := map[string]string{
@@ -60,7 +72,6 @@ func ReadCookieHandler(res http.ResponseWriter, req *http.Request) (user_name st
         value := make(map[string]string)
         if err = cookieHandler.Decode("cookie-name", cookie.Value, &value); err == nil {
             user_name = value["ID"]
-			fmt.Println(user_name)
 			return user_name
         }
     }
@@ -226,7 +237,7 @@ func loginPage(res http.ResponseWriter, req *http.Request) {
 	client, err := mongo.Connect(context.Background(), "mongodb+srv://USERNAME:PASSWORD@USERNAME-keqxy.gcp.mongodb.net/admin", nil)
 	db := client.Database("GCP_test")
 	coll := db.Collection("GCP_test")
-
+	
 	ID := req.FormValue("ID")
 	password := req.FormValue("password")
 	which_button := req.FormValue("button")
@@ -306,13 +317,52 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 	defer ws.Close()
 
 	clients[ws] = true
-	broadcast <- temp_a
-
+	//broadcast <- temp_a
+	ws.WriteMessage(websocket.BinaryMessage,temp_a)
+	ws.WriteMessage(websocket.BinaryMessage,temp_user)
+	
 	for {
 		var msg []byte
+		
 		_,msg,err = ws.ReadMessage()
-		fmt.Println(msg)
-		broadcast <- msg
+		s := strings.Split(string(msg),",")
+		if s[0] == "buy"{
+			client, err := mongo.Connect(context.Background(), "mongodb+srv://USERNAME:PASSWORD@USERNAME-keqxy.gcp.mongodb.net/admin", nil)
+			db := client.Database("GCP_test")
+			coll := db.Collection("GCP_test")
+			
+			var name string = ReadCookieHandler(w,r)
+
+			_, _ = coll.UpdateOne(
+				context.Background(),
+				bson.NewDocument(
+					bson.EC.String("name", name),
+				),
+				bson.NewDocument(
+				    bson.EC.SubDocumentFromElements("$push",
+					bson.EC.String("item",s[1]),
+					),
+				),
+			)
+			
+			var temp_value,_ = strconv.Atoi(s[2])
+			
+			user_n[temp_value]=name
+			
+			temp_user = []byte("user")
+			
+			for i:=0;i<5;i++{
+				temp_user = append(temp_user,[]byte(",")...)
+				temp_user = append(temp_user,[]byte(user_n[i])...)
+			}
+			
+			for client := range clients {
+				client.WriteMessage(websocket.BinaryMessage,temp_user)
+			}
+		
+			broadcast <- msg
+		
+		}
 	}
 }
 
@@ -340,14 +390,16 @@ func UpdateStoreIn2Min() {
 	 
 	time.AfterFunc(rounded.Sub(t),func() {
 	 
-	ticker := time.NewTicker(time.Second * 10)
+	ticker := time.NewTicker(time.Second * 20)
 	
 	rand.Shuffle(len(a), func(i, j int) {
 			a[i], a[j] = a[j], a[i]
 			})
-			fmt.Println(a)
 			
 			temp_a=temp_a[:0]
+			iinit();
+			
+			temp_a=[]byte("store,")
 			
 			for i:=0;i<5;i++{
 				temp_a=append(temp_a,[]byte(strconv.Itoa(a[i]))...)
@@ -356,19 +408,19 @@ func UpdateStoreIn2Min() {
 			temp_a=temp_a[:len(temp_a)-1]
 			broadcast<-temp_a
 	 
-	defer ticker.Stop()
-	done := make(chan bool)
+	/*defer ticker.Stop()
+	done := make(chan bool)*/
 	 
 	go func() {
-		time.Sleep(60 * time.Second)
-		done <- true
+		/*time.Sleep(60 * time.Second)
+		done <- true*/
 	}()
 	
 	for {
 		select {
-		case <-done:
+		/*case <-done:
 			fmt.Println("Done!")
-			return
+			return*/
 		case ti := <-ticker.C:
 			rand.Shuffle(len(a), func(i, j int) {
 			a[i], a[j] = a[j], a[i]
@@ -376,6 +428,9 @@ func UpdateStoreIn2Min() {
 			fmt.Println(a,ti)
 			
 			temp_a=temp_a[:0]
+			iinit()
+			
+			temp_a=[]byte("store,")
 			
 			for i:=0;i<5;i++{
 				temp_a=append(temp_a,[]byte(strconv.Itoa(a[i]))...)
@@ -389,7 +444,7 @@ func UpdateStoreIn2Min() {
 }
 
 func main() {
-
+	iinit()
 	rand.Seed(time.Now().UnixNano())
 	wg.Add(1)
 	
