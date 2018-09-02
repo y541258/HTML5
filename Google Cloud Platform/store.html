@@ -11,18 +11,20 @@
 var items_name=[];
 var items_price=[];
 
+var which_message=[];
+var buy_item=[]
 var now_store_item=[];
+var user_order=["user","","","","",""];
 
 var ws;
     $(function(){
         link();
     })
     function link () {
-	    ws = new WebSocket('ws://' + window.location.host + '/ws');
-        //ws = new WebSocket("ws://127.0.0.1:8000/ws");//连接服务器
+	    //ws = new WebSocket('ws://' + window.location.host + '/ws');
+        ws = new WebSocket("ws://127.0.0.1:8080/ws");//连接服务器
 		ws.binaryType = 'arraybuffer';
         ws.onopen = function(event){
-            console.log(event);
             alert('連接');
         };
 		
@@ -32,7 +34,25 @@ var ws;
 		var textDecoder = new TextDecoder('utf-8');
 		str = textDecoder.decode(dv);
 		
-		now_store_item = str.split(',');
+		which_message = str.split(',')
+		
+		switch (which_message[0])
+		{
+			case "store":
+				buy_item = [];
+				user_order=["user","","","","",""];
+				now_store_item = which_message;
+				break;
+			case "buy":
+				buy_item = which_message;
+				break;
+			case "user":
+				user_order = which_message;
+				break;
+				
+		}
+		
+		console.log(which_message);
 
 		re_draw();
         
@@ -73,8 +93,17 @@ function re_draw()
 
 	for(var i=0;i<5;i++)
 	{
-		ctx.fillText(items_name[now_store_item[i]] ,30+i*120,50);
-		ctx.fillText(items_price[now_store_item[i]] ,30+i*120,100);
+		ctx.fillText(items_name[now_store_item[i+1]] ,30+i*120,50);
+		ctx.fillText(items_price[now_store_item[i+1]] ,30+i*120,100);
+		//+1的原因是因為 0是 字串"store"
+	}
+	
+	for(var i=1;i<6;i++)
+	{
+		if(user_order[i] != null)
+		{
+			ctx.fillText(user_order[i] ,30+(i-1)*120,200);
+		}
 	}
 	
 }
@@ -105,14 +134,19 @@ function click_region(id,left,top,width,height)
             self.left + self.width > mouse.x && 
             self.top < mouse.y && 
             self.top + self.height > mouse.y) {
-
+			alert(now_store_item[self.id+1] + " " + items_name[now_store_item[self.id+1]])
+			ws.send("buy," + parseInt(parseInt(now_store_item[self.id+1])+1) + "," + self.id);
+			//now_store_item[self.id+1]+1 因為編號是從1開始,所以再+1
         } 
     });
 }
 
 var elements=[];
 
-//elements.push(new click_region(i,i%4*c.width/4,parseInt(i/4)*c.height/4,c.width/4,c.height/4));
+for(var i=0;i<5;i++)
+{
+	elements.push(new click_region(i,30+i*120,50,120,90));
+}
 
 	
 $(c).on('click', function(e) { 
