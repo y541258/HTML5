@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<meta charset="utf-8"> 
+<html>
+<body>
+
+<script src="jquery-3.3.1.js"></script>
+
+<canvas id="myCanvas" width="640" height="480"></canvas>
+
+<script>
+var items_name=[];
+var items_price=[];
+
+var which_message=[];
+var buy_item=[]
+var now_store_item=[];
+var user_order=["user","","","","",""];
+
+var ws;
+    $(function(){
+        link();
+    })
+    function link () {
+	    //ws = new WebSocket('ws://' + window.location.host + '/ws');
+        ws = new WebSocket("ws://127.0.0.1:8080/ws");//连接服务器
+		ws.binaryType = 'arraybuffer';
+        ws.onopen = function(event){
+            alert('連接');
+        };
+		
+        ws.onmessage = function (event) {
+		
+		var dv = new DataView(event.data);
+		var textDecoder = new TextDecoder('utf-8');
+		str = textDecoder.decode(dv);
+		
+		which_message = str.split(',')
+		
+		switch (which_message[0])
+		{
+			case "store":
+				buy_item = [];
+				user_order=["user","","","","",""];
+				now_store_item = which_message;
+				break;
+			case "buy":
+				buy_item = which_message;
+				break;
+			case "user":
+				user_order = which_message;
+				break;
+				
+		}
+		
+		console.log(which_message);
+
+		re_draw();
+        
+        ws.onclose = function(event){alert("與伺服器連線中斷");};
+        ws.onerror = function(event){alert("WebSocket Error");};
+    }
+}
+
+var c=document.getElementById("myCanvas");
+var ctx=c.getContext("2d");
+
+ctx.fillStyle="#FFFFFF";
+
+
+ $.getJSON("store_item.json",function(){
+ console.log("success");
+ })
+ .done(function(data) {
+  $.each( data, function( key, val ) {
+		for(var i=0;i<data.store_item.length;i++)
+		{
+			items_name.push(val[i].name);
+			items_price.push(val[i].price);
+		}
+	})
+ })
+ 
+ .fail(function(jqXHR, textStatus, errorThrown) { alert('getJSON request failed! ' + textStatus); }) 
+ 
+function re_draw()
+{
+	ctx.fillStyle="#FFFFFF"; 
+
+	ctx.fillRect(0,0,c.width,c.height);
+
+	ctx.fillStyle="#000000";
+	ctx.font="40px 標楷體";
+
+	for(var i=0;i<5;i++)
+	{
+		ctx.fillText(items_name[now_store_item[i+1]] ,30+i*120,50);
+		ctx.fillText(items_price[now_store_item[i+1]] ,30+i*120,100);
+		//+1的原因是因為 0是 字串"store"
+	}
+	
+	for(var i=1;i<6;i++)
+	{
+		if(user_order[i] != null)
+		{
+			ctx.fillText(user_order[i] ,30+(i-1)*120,200);
+		}
+	}
+	
+}
+
+function shuffle(array) {
+  var m = array.length, t, i;
+  while (m) {
+    i = Math.floor(Math.random() * m--);
+    t = array[m];
+    array[m] = array[i];
+    array[i] = t;
+  }
+}
+
+function click_region(id,left,top,width,height)
+{
+	this.id=id;
+
+	var self=this;
+
+	this.left=left;
+	this.top=top;
+	this.width=width;
+	this.height=height;
+	
+	$(c).on('handleClick', function(e, mouse) {
+        if (self.left < mouse.x && 
+            self.left + self.width > mouse.x && 
+            self.top < mouse.y && 
+            self.top + self.height > mouse.y) {
+			alert(now_store_item[self.id+1] + " " + items_name[now_store_item[self.id+1]])
+			ws.send("buy," + parseInt(parseInt(now_store_item[self.id+1])+1) + "," + self.id);
+			//now_store_item[self.id+1]+1 因為編號是從1開始,所以再+1
+        } 
+    });
+}
+
+var elements=[];
+
+for(var i=0;i<5;i++)
+{
+	elements.push(new click_region(i,30+i*120,50,120,90));
+}
+
+	
+$(c).on('click', function(e) { 
+	var mouse= { 
+        x: e.pageX - c.offsetLeft, 
+        y: e.pageY - c.offsetTop
+	} 
+         
+    //fire off synthetic event containing mouse coordinate info 
+    $(c).trigger('handleClick', [mouse]);
+ });
+
+</script>
+
+</body>
+</html>
