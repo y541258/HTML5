@@ -8,6 +8,7 @@
 <canvas id="myCanvas" width="640" height="480"></canvas>
 
 <script>
+var path =[];
 /*
 var items_name=[];
 var items_price=[];
@@ -100,9 +101,21 @@ function Point(x,y)
 $(c).on('handleClick', function(e, mouse) {
 		path.push(new Point(mouse.x,mouse.y));
 		console.dir(path);
+		
+		if(path.length==1)
+		{
+			move_with_line();
+		}
+		else if(path.length>1)
+		{
+		 path = path.slice(1,2);
+		 console.dir(path);
+		}
 });
 
-var path =[];
+function move_with_line(){
+	
+}
  
 function re_draw()
 {
@@ -138,9 +151,11 @@ function click_region(id,left,top,width,height)
             self.left + self.width > mouse.x && 
             self.top < mouse.y && 
             self.top + self.height > mouse.y) {
+			/*
 			alert(now_store_item[self.id+1] + " " + items_name[now_store_item[self.id+1]])
 			ws.send("buy," + parseInt(parseInt(now_store_item[self.id+1])+1) + "," + self.id);
 			//now_store_item[self.id+1]+1 因為編號是從1開始,所以再+1
+			*/
         } 
     });
 }
