@@ -91,6 +91,19 @@ img.onload =function(){
 	re_draw();
 }
  
+function Point(x,y)
+{
+	this.x=x;
+	this.y=y;
+}
+
+$(c).on('handleClick', function(e, mouse) {
+		path.push(new Point(mouse.x,mouse.y));
+		console.dir(path);
+});
+
+var path =[];
+ 
 function re_draw()
 {
 	ctx.fillStyle="#FFFFFF"; 
