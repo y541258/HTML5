@@ -125,6 +125,7 @@ $(c).on('handleClick', function(e, mouse) {
 		}
 });
 
+/*
 function move_with_line(){
 	if(character_coordinate[0] == path[0].x &&
 	   character_coordinate[1] == path[0].y)
@@ -170,7 +171,7 @@ function move_with_line(){
 		//若是浮點(小數或說分數)座標還得另外處理
 		re_draw();
 	}
-}
+}*/
 
 function move_with_really_line(){
 	//直線方程式 y=mx m是斜率,m代表垂直間距除以水平間距
@@ -187,13 +188,16 @@ function move_with_really_line(){
 	//就算求出斜率,理論上還要考慮角色的行走速度
 	//目前這樣寫是瞬間移動
 	//先確認能瞬間移動
+	
+	/*
 	character_coordinate[0] = path[0].x;
 	character_left = character_coordinate[0] - graphic_center_offset;
 	
 	character_coordinate[1] = path[0].y;
 	character_top = character_coordinate[1] - graphic_center_offset;
-	
-	re_draw();
+	*/
+	character_left -= 0.1;
+	character_coordinate[0] = character_left + graphic_center_offset
 }
 
 function move_with_arc(){
@@ -206,6 +210,8 @@ function re_draw()
 	ctx.fillRect(0,0,c.width,c.height);
 
 	ctx.drawImage(img,0,0,64,64,character_left,character_top,64,64);
+	
+	requestAnimationFrame(re_draw);
 }
 
 function shuffle(array) {
