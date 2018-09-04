@@ -105,10 +105,9 @@ function Point(x,y)
 	this.x=x;
 	this.y=y;
 }
-
+	
 $(c).on('handleClick', function(e, mouse) {
 		path.push(new Point(mouse.x,mouse.y));
-		console.dir(path);
 		
 		if(path.length==1)
 		{
@@ -119,6 +118,7 @@ $(c).on('handleClick', function(e, mouse) {
 		{
 		 clearInterval(timer_id);
 		 path = path.slice(1,2);
+		 timer_id =setInterval(move_with_line,10);
 		 console.dir(path);
 		}
 });
