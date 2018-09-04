@@ -105,20 +105,22 @@ function Point(x,y)
 	this.x=x;
 	this.y=y;
 }
-	
+
 $(c).on('handleClick', function(e, mouse) {
 		path.push(new Point(mouse.x,mouse.y));
 		
 		if(path.length==1)
 		{
-			timer_id =setInterval(move_with_line,10);
+			//timer_id =setInterval(move_with_line,10);
+			timer_id =setInterval(move_with_really_line,10);
 			//setInterval(move_with_arc,500);
 		}
 		else if(path.length>1)
 		{
 		 clearInterval(timer_id);
 		 path = path.slice(1,2);
-		 timer_id =setInterval(move_with_line,10);
+		 //timer_id =setInterval(move_with_line,10);
+		 timer_id =setInterval(move_with_really_line,10);
 		 console.dir(path);
 		}
 });
@@ -168,6 +170,30 @@ function move_with_line(){
 		//若是浮點(小數或說分數)座標還得另外處理
 		re_draw();
 	}
+}
+
+function move_with_really_line(){
+	//直線方程式 y=mx m是斜率,m代表垂直間距除以水平間距
+	//因此兩點式是 y-y₀ = (y₁-y₀ * x-x₀) / (x₁-x₀)
+	if(character_coordinate[0] == path[0].x &&
+	   character_coordinate[1] == path[0].y)
+	{
+		alert("移動完成");
+		clearInterval(timer_id);
+		path =[];
+		return;
+	} 
+	
+	//就算求出斜率,理論上還要考慮角色的行走速度
+	//目前這樣寫是瞬間移動
+	//先確認能瞬間移動
+	character_coordinate[0] = path[0].x;
+	character_left = character_coordinate[0] - graphic_center_offset;
+	
+	character_coordinate[1] = path[0].y;
+	character_top = character_coordinate[1] - graphic_center_offset;
+	
+	re_draw();
 }
 
 function move_with_arc(){
