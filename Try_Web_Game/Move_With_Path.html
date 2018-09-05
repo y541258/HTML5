@@ -109,6 +109,8 @@ function Point(x,y)
 $(c).on('handleClick', function(e, mouse) {
 		path.push(new Point(mouse.x,mouse.y));
 		
+		console.dir(path);
+		
 		if(path.length==1)
 		{
 			//timer_id =setInterval(move_with_line,10);
@@ -121,7 +123,6 @@ $(c).on('handleClick', function(e, mouse) {
 		 path = path.slice(1,2);
 		 //timer_id =setInterval(move_with_line,10);
 		 timer_id =setInterval(move_with_really_line,10);
-		 console.dir(path);
 		}
 });
 
@@ -176,8 +177,8 @@ function move_with_line(){
 function move_with_really_line(){
 	//直線方程式 y=mx m是斜率,m代表垂直間距除以水平間距
 	//因此兩點式是 y-y₀ = (y₁-y₀ * x-x₀) / (x₁-x₀)
-	if(character_coordinate[0] == path[0].x &&
-	   character_coordinate[1] == path[0].y)
+	if(parseInt(character_coordinate[0]) == path[0].x &&
+	   parseInt(character_coordinate[1]) == path[0].y)
 	{
 		alert("移動完成");
 		clearInterval(timer_id);
@@ -196,8 +197,25 @@ function move_with_really_line(){
 	character_coordinate[1] = path[0].y;
 	character_top = character_coordinate[1] - graphic_center_offset;
 	*/
-	character_left -= 0.1;
-	character_coordinate[0] = character_left + graphic_center_offset
+	
+	//若要考慮行走速度(步輻),我這程式步幅是1
+	//不轉整數很可能走不到目的地,因為走的是取到小數下13位
+	//但點擊的座標本身是整數
+	
+	if(parseInt(character_coordinate[0]) != path[0].x)
+	{
+		character_left += Math.cos(Math.atan2(path[0].y-character_coordinate[1],path[0].x-character_coordinate[0]));
+		character_coordinate[0] = character_left + graphic_center_offset;
+		console.log(parseInt(character_coordinate[0]));
+	}
+	
+	if(parseInt(character_coordinate[1]) != path[0].y)
+	{
+		character_top += Math.sin(Math.atan2(path[0].y-character_coordinate[1],path[0].x-character_coordinate[0]));
+		character_coordinate[1] = character_top + graphic_center_offset;
+		console.log("character_top"+character_top);
+		console.log(parseInt(character_coordinate[1]));
+	}
 }
 
 function move_with_arc(){
