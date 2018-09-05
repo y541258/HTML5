@@ -114,7 +114,7 @@ $(c).on('handleClick', function(e, mouse) {
 		if(path.length==1)
 		{
 			//timer_id =setInterval(move_with_line,10);
-			timer_id =setInterval(move_with_really_line,10);
+			timer_id =setInterval(move_with_arc,10);
 			//setInterval(move_with_arc,500);
 		}
 		else if(path.length>1)
@@ -122,7 +122,7 @@ $(c).on('handleClick', function(e, mouse) {
 		 clearInterval(timer_id);
 		 path = path.slice(1,2);
 		 //timer_id =setInterval(move_with_line,10);
-		 timer_id =setInterval(move_with_really_line,10);
+		 timer_id =setInterval(move_with_arc,10);
 		}
 });
 
@@ -224,7 +224,26 @@ function move_with_really_line(){
 }
 
 function move_with_arc(){
+	path[0].x = 70+graphic_center_offset;
+	path[0].y = 50+graphic_center_offset;
+
+	if(parseInt(character_coordinate[0]) == path[0].x &&
+	   parseInt(character_coordinate[1]) == path[0].y)
+	{
+		alert("移動完成");
+		clearInterval(timer_id);
+		path =[];
+		return;
+	}
 	
+	if(parseInt(character_coordinate[0]) != path[0].x)
+	{
+		character_left += 1;
+		character_coordinate[0] = character_left + graphic_center_offset;
+	}
+	
+	character_top = (character_left-60)*(character_left-60)/10 + 40
+	character_coordinate[1] = character_top + graphic_center_offset;	
 }
  
 function re_draw()
