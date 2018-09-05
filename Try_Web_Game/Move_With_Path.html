@@ -177,6 +177,11 @@ function move_with_line(){
 function move_with_really_line(){
 	//直線方程式 y=mx m是斜率,m代表垂直間距除以水平間距
 	//因此兩點式是 y-y₀ = (y₁-y₀ * x-x₀) / (x₁-x₀)
+	
+	//測試指定座標用
+	//path[0].x = 50+graphic_center_offset;
+	//path[0].y = 70+graphic_center_offset;
+	
 	if(parseInt(character_coordinate[0]) == path[0].x &&
 	   parseInt(character_coordinate[1]) == path[0].y)
 	{
