@@ -13,6 +13,15 @@ var graphic_center_offset=64/2;
 var character_left=50;
 var character_top=50;
 var character_coordinate=[character_left+graphic_center_offset,character_top+graphic_center_offset];
+
+var result=[];
+var cp =[];
+cp.push(new Point(50+graphic_center_offset,50+graphic_center_offset));
+cp.push(new Point(70+graphic_center_offset,70+graphic_center_offset));
+cp.push(new Point(50+graphic_center_offset,70+graphic_center_offset));
+cp.push(new Point(110+graphic_center_offset,50+graphic_center_offset));
+var run_t=0;
+
 //character圖檔大小是64*64
 //但drawImage是從指定點為圖片的左上角開始畫
 //所以要這樣取得中心點
@@ -105,6 +114,9 @@ function Point(x,y)
 	this.x=x;
 	this.y=y;
 }
+
+set_path();
+console.dir(result);
 
 $(c).on('handleClick', function(e, mouse) {
 		path.push(new Point(mouse.x,mouse.y));
@@ -224,6 +236,8 @@ function move_with_really_line(){
 }
 
 function move_with_arc(){
+/*
+	//這段是二次方
 	path[0].x = 70+graphic_center_offset;
 	path[0].y = 50+graphic_center_offset;
 
@@ -244,6 +258,57 @@ function move_with_arc(){
 	
 	character_top = (character_left-60)*(character_left-60)/10 + 40
 	character_coordinate[1] = character_top + graphic_center_offset;	
+	*/
+
+	//這段是三次貝茲曲線
+	path[0].x = 110+graphic_center_offset;
+	path[0].y = 50+graphic_center_offset;
+
+	character_left += Math.cos(Math.atan2(result[run_t].y-character_coordinate[1],result[run_t].x-character_coordinate[0]));
+	character_coordinate[0] = character_left + graphic_center_offset;
+
+	character_top += Math.sin(Math.atan2(result[run_t].y-character_coordinate[1],result[run_t].x-character_coordinate[0]));
+	character_coordinate[1] = character_top + graphic_center_offset;;
+	
+	run_t++;
+	
+	if(run_t==result.length)
+	{
+		alert("移動完成");
+		clearInterval(timer_id);
+		console.log(character_left);
+		console.log(character_top);
+		path =[];
+		return;
+	} 
+}
+
+function set_path()
+{
+	var dt = 1.0 / ( 300 - 1 );
+
+    for(var i = 0; i < 300; i++)
+	{
+        cubic_Bezier(i*dt);
+	}
+}
+
+function cubic_Bezier(t)
+{
+	var ax,bx,cx,ay,by,cy;
+	
+	cx = 3.0 * (cp[1].x - cp[0].x);
+    bx = 3.0 * (cp[2].x - cp[1].x) - cx;
+    ax = cp[3].x - cp[0].x - cx - bx;
+
+    cy = 3.0 * (cp[1].y - cp[0].y);
+    by = 3.0 * (cp[2].y - cp[1].y) - cy;
+    ay = cp[3].y - cp[0].y - cy - by;
+
+    tSquared = t * t;
+    tCubed = tSquared * t;
+
+	result.push(new Point((ax * tCubed) + (bx * tSquared) + (cx * t) + cp[0].x,(ay * tCubed) + (by * tSquared) + (cy * t) + cp[0].y));
 }
  
 function re_draw()
