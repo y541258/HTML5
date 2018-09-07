@@ -6,6 +6,7 @@
 <script src="jquery-3.3.1.js"></script>
 
 <canvas id="myCanvas" width="640" height="480"></canvas>
+<div id="div_test"></div>
 
 <script>
 var path =[];
@@ -14,12 +15,18 @@ var character_left=50;
 var character_top=50;
 var character_coordinate=[character_left+graphic_center_offset,character_top+graphic_center_offset];
 
+/*
 var result=[];
 var cp =[];
 cp.push(new Point(50+graphic_center_offset,50+graphic_center_offset));
 cp.push(new Point(70+graphic_center_offset,70+graphic_center_offset));
 cp.push(new Point(50+graphic_center_offset,70+graphic_center_offset));
 cp.push(new Point(110+graphic_center_offset,50+graphic_center_offset));
+*/
+
+var path_record=[];
+var record_flag=false;
+
 var run_t=0;
 
 //character圖檔大小是64*64
@@ -115,11 +122,11 @@ function Point(x,y)
 	this.y=y;
 }
 
-set_path();
-console.dir(result);
+//set_path();
+//console.dir(result);
 
 $(c).on('handleClick', function(e, mouse) {
-		path.push(new Point(mouse.x,mouse.y));
+		/*path.push(new Point(mouse.x,mouse.y));
 		
 		console.dir(path);
 		
@@ -135,7 +142,7 @@ $(c).on('handleClick', function(e, mouse) {
 		 path = path.slice(1,2);
 		 //timer_id =setInterval(move_with_line,10);
 		 timer_id =setInterval(move_with_arc,10);
-		}
+		}*/
 });
 
 /*
@@ -261,6 +268,7 @@ function move_with_arc(){
 	*/
 
 	//這段是三次貝茲曲線
+	/*
 	path[0].x = 110+graphic_center_offset;
 	path[0].y = 50+graphic_center_offset;
 
@@ -268,7 +276,7 @@ function move_with_arc(){
 	character_coordinate[0] = character_left + graphic_center_offset;
 
 	character_top += Math.sin(Math.atan2(result[run_t].y-character_coordinate[1],result[run_t].x-character_coordinate[0]));
-	character_coordinate[1] = character_top + graphic_center_offset;;
+	character_coordinate[1] = character_top + graphic_center_offset;
 	
 	run_t++;
 	
@@ -280,7 +288,24 @@ function move_with_arc(){
 		console.log(character_top);
 		path =[];
 		return;
-	} 
+	} */
+	
+	//讓圖片照畫的路徑移動,但是實測結果會跳過些pixel
+	
+	character_left = path_record[run_t+1].x-graphic_center_offset;
+	character_top = path_record[run_t+1].y-graphic_center_offset;
+	
+	run_t++;
+	
+	if(run_t == path_record.length-1)
+	{
+		path_record=[];
+		clearInterval(timer_id);
+		run_t=0;
+		console.log(character_coordinate[0]);
+		console.log(character_left);
+		console.log(character_coordinate[1]);
+	}
 }
 
 function set_path()
@@ -364,7 +389,7 @@ for(var i=0;i<5;i++)
 }
 
 	
-$(c).on('click', function(e) { 
+$(c).on('click', function(e) {
 	var mouse= { 
         x: e.pageX - c.offsetLeft, 
         y: e.pageY - c.offsetTop
@@ -373,6 +398,29 @@ $(c).on('click', function(e) {
     //fire off synthetic event containing mouse coordinate info 
     $(c).trigger('handleClick', [mouse]);
  });
+ 
+$(c).on('mousedown', function(e) {
+	record_flag=true;
+	console.dir(path_record);
+	path_record=[];
+}); 
+ 
+$(c).on('mouseup', function(e) {
+	record_flag=false;
+	character_left=path_record[0].x-graphic_center_offset;
+	character_top=path_record[0].y-graphic_center_offset;
+	timer_id =setInterval(move_with_arc,10);
+	console.dir(path_record);
+});
+
+$(c).on('mousemove', function(e) {
+	if(record_flag)
+	{
+		path_record.push(new Point(e.pageX - c.offsetLeft,e.pageY - c.offsetTop));
+		document.getElementById("div_test").innerHTML += (e.pageX - c.offsetLeft).toString() + "," + (e.pageY - c.offsetTop).toString() + "<br>";
+		//記錄下來,以後可以複製結果存到個檔案來讀取使用
+	}
+});
 
 </script>
 
