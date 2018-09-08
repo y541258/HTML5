@@ -1,0 +1,22 @@
+var num_1=10.1;
+var num_2=-0.1;
+//理想狀況是可以寫 var num_1=10.1,num_2=-0.1;
+var result=0;
+
+for(var i=0;i<10;i++)
+{
+ result += test(num_1-i,num_2);
+ 
+ 夏知饋 讓我們互道%d聲晚安 i
+ //上面這行是自製腳本語言
+}
+
+if(result < 10)
+{
+ alert(result);
+//若狀況不好這邊可能要寫成alert(result.toString());
+}
+
+function test(a,b){
+ return a*b;
+}
