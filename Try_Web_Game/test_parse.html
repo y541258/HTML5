@@ -3,6 +3,8 @@
 <html>
 <body>
 
+<textarea id="input_data"></textarea>
+<button id="run">執行</button>
 <div id="div_test"></div>
 
 <script src="jquery-3.3.1.js"></script>
@@ -24,6 +26,100 @@ $.loadScript('test_parse.txt', function(){
 </script>
 
 <script>
+
+run.addEventListener("click",compute);
+
+var expression_wait_parse=[];
+var op_stack=[];
+var postfix_result=[];
+
+function compute(){
+	document.getElementById("div_test").innerHTML = document.getElementById("input_data").value+"<br>";
+	expression_wait_parse = document.getElementById("input_data").value;
+	expression_wait_parse= expression_wait_parse.replace(/\s/g,"");
+	expression_wait_parse = expression_wait_parse.split(/(\-?\d*\.?\d+)/);
+	
+	for(var i=1;i<expression_wait_parse.length-1;i++)
+	{
+		if(!expression_wait_parse[i])
+		{
+			if(/\-?/.test(expression_wait_parse[i+1]))
+			{
+				expression_wait_parse[i]="-";
+				expression_wait_parse[i+1]=(expression_wait_parse[i+1]*-1).toString();
+			}
+		}
+	}
+	
+	alert(expression_wait_parse);
+	
+	for(var i=1;i<expression_wait_parse.length-1;i++)
+	{
+		if(/\d/.test(expression_wait_parse[i]))
+		{
+			postfix_result.push(expression_wait_parse[i]);
+		}
+		else if(/[\+\-\*\/]/.test(expression_wait_parse[i]))
+		{			
+			console.log(expression_wait_parse[i]);
+			if(op_stack.length < 1)
+			{
+				op_stack.push(expression_wait_parse[i]);
+			}
+			else
+			{
+				for(var j=op_stack.length-1; j>=0;j--)
+				{
+					if((op_stack[j]=="+" || op_stack[j]=="-") && (expression_wait_parse[i]=="+" ||expression_wait_parse[i]=="-"))
+					{
+						postfix_result.push(op_stack.pop());
+					}
+					
+					if((op_stack[j]=="*" || op_stack[j]=="/") && (expression_wait_parse[i]=="*" ||expression_wait_parse[i]=="/"))
+					{
+						postfix_result.push(op_stack.pop());
+					}
+					
+					if((op_stack[j]=="*" || op_stack[j]=="/") && (expression_wait_parse[i]=="+" ||expression_wait_parse[i]=="-"))
+					{
+						postfix_result.push(op_stack.pop());
+					}
+				}
+				
+				op_stack.push(expression_wait_parse[i]);
+			}
+			console.log(op_stack);
+		}
+	}
+	
+	for(var i=op_stack.length-1;i>=0;i--)
+	{
+		postfix_result.push(op_stack.pop());
+	}
+	
+	document.getElementById("div_test").innerHTML += postfix_result+"<br>";
+	
+	var compute_stack=[];
+	var num1,num2;
+	
+	for(var i=0;i<postfix_result.length;i++)
+	{
+		if(/\d/.test(postfix_result[i]))
+		{
+			compute_stack.push(postfix_result[i]);
+		}
+		else if(/[\+\-\*\/]/.test(postfix_result[i]))
+		{
+			num2 = compute_stack.pop();
+			num1 = compute_stack.pop();
+			compute_stack.push(eval(num1+postfix_result[i]+num2));
+		}
+	}
+	
+	document.getElementById("div_test").innerHTML += "計算結果" + compute_stack.pop()+"<br>";
+}
+
+/*
 //抄襲自https://stackoverflow.com/questions/1431094/how-do-i-replace-a-character-at-a-particular-index-in-javascript
 String.prototype.replaceAt=function(index, replacement) {
     return this.substr(0, index) + replacement+ this.substr(index + replacement.length);
@@ -45,10 +141,10 @@ for(var i=0;i<operation.length;i++)
 			document.getElementById("div_test").innerHTML += s+" " + eval(s) + "<br>"
 		}
 	}
-}
+}*/
 
 
-jQuery.loadTxt = function (url, callback) {
+/*jQuery.loadTxt = function (url, callback) {
     jQuery.ajax({
         url: url,
         dataType: 'text',
