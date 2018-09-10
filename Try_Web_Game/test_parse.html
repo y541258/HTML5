@@ -37,13 +37,13 @@ function compute(){
 	document.getElementById("div_test").innerHTML = document.getElementById("input_data").value+"<br>";
 	expression_wait_parse = document.getElementById("input_data").value;
 	expression_wait_parse= expression_wait_parse.replace(/\s/g,"");
-	expression_wait_parse = expression_wait_parse.split(/(\-?\d*\.?\d+)/);
+	expression_wait_parse = expression_wait_parse.split(/(\()|(\-?\d*\.?\d+)/);
 	
 	for(var i=1;i<expression_wait_parse.length-1;i++)
 	{
 		if(!expression_wait_parse[i])
 		{
-			if(/\-?/.test(expression_wait_parse[i+1]))
+			if(/\-/.test(expression_wait_parse[i+1]))
 			{
 				expression_wait_parse[i]="-";
 				expression_wait_parse[i+1]=(expression_wait_parse[i+1]*-1).toString();
@@ -51,9 +51,11 @@ function compute(){
 		}
 	}
 	
+	expression_wait_parse=expression_wait_parse.filter(function(e){return e});
+	
 	alert(expression_wait_parse);
 	
-	for(var i=1;i<expression_wait_parse.length-1;i++)
+	for(var i=0;i<expression_wait_parse.length;i++)
 	{
 		if(/\d/.test(expression_wait_parse[i]))
 		{
@@ -70,6 +72,11 @@ function compute(){
 			{
 				for(var j=op_stack.length-1; j>=0;j--)
 				{
+					if(op_stack[j]=="(")
+					{
+						break;
+					}
+					
 					if((op_stack[j]=="+" || op_stack[j]=="-") && (expression_wait_parse[i]=="+" ||expression_wait_parse[i]=="-"))
 					{
 						postfix_result.push(op_stack.pop());
@@ -89,6 +96,21 @@ function compute(){
 				op_stack.push(expression_wait_parse[i]);
 			}
 			console.log(op_stack);
+		}
+		else if(/\(/.test(expression_wait_parse[i]))
+		{
+			op_stack.push(expression_wait_parse[i]);
+		}
+		else if(/\)/.test(expression_wait_parse[i]))
+		{
+			var temp = op_stack.pop();
+			
+			while(temp!="(")
+			{
+				postfix_result.push(temp);
+				temp = op_stack.pop();
+				alert(postfix_result);
+			}
 		}
 	}
 	
