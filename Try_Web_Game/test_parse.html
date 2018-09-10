@@ -37,7 +37,7 @@ function compute(){
 	document.getElementById("div_test").innerHTML = document.getElementById("input_data").value+"<br>";
 	expression_wait_parse = document.getElementById("input_data").value;
 	expression_wait_parse= expression_wait_parse.replace(/\s/g,"");
-	expression_wait_parse = expression_wait_parse.split(/(\()|(\-?\d*\.?\d+)/);
+	expression_wait_parse = expression_wait_parse.split(/([\(\)])|(\-?\d*\.?\d+)/);
 	
 	for(var i=1;i<expression_wait_parse.length-1;i++)
 	{
