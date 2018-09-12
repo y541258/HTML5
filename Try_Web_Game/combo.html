@@ -20,6 +20,7 @@ var image_count=2;
 var keyAllowed = {};
 
 var combo="";
+var combo_timer;
 var state="初始";
 
 document.onkeydown=function(e){
@@ -28,27 +29,27 @@ document.onkeydown=function(e){
 
   /*if (keyAllowed [e.which] === false) return;
   keyAllowed [e.which] = false;*/
+  
+  if(!combo_timer)
+  {
+	combo_timer = setInterval(check_input,400);
+  }
 
   switch(e.keyCode)
   {
     case 37:
-      document.getElementById("div_test").innerHTML += "←";
 	  combo+="←";
       break;
 	case 38:
-      document.getElementById("div_test").innerHTML += "↑";
 	  combo+="↑";
       break;
 	case 39:
-      document.getElementById("div_test").innerHTML += "→";
 	  combo+="→";
       break;
 	case 40:
-      document.getElementById("div_test").innerHTML += "↓";
 	  combo+="↓";
       break;
 	case 90:
-	  document.getElementById("div_test").innerHTML += "攻";
 	  combo+="攻";
       break;
   }
@@ -67,7 +68,6 @@ document.onkeydown=function(e){
 }*/
 
 var timer = setInterval(re_draw,50);
-var combo_timer = setInterval(check_input,200);
 
 function re_draw()
 {	
@@ -76,6 +76,8 @@ function re_draw()
 
 	ctx.fillStyle="#000000";
 	ctx.fillText(state,0,50);
+	
+	document.getElementById("div_test").innerHTML = combo;
 }
 
 function check_input()
@@ -85,6 +87,9 @@ function check_input()
 		state="↓↑攻";
 	}
 	combo="";
+	
+	clearInterval(combo_timer);
+	combo_timer="";
 }
 
 </script>
