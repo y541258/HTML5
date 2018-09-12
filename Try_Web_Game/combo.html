@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<meta charset="utf-8"> 
+<html>
+<head></head>
+
+<div id="div_test"></div>
+
+<script>
+//https://stackoverflow.com/questions/7686197/how-can-i-avoid-autorepeated-keydown-events-in-javascript
+var canvas_element;
+canvas_element = document.createElement("canvas");
+canvas_element.setAttribute("width",600);
+canvas_element.setAttribute("height",480);
+//canvas_element.style="display:block; position:absolute; top:10px; left:10px;";
+document.documentElement.appendChild(canvas_element);
+
+var ctx = canvas_element.getContext("2d");
+var image_count=2;
+
+var keyAllowed = {};
+
+var combo="";
+var state="初始";
+
+document.onkeydown=function(e){
+  e.preventDefault();
+  console.log(e.keyCode);
+
+  /*if (keyAllowed [e.which] === false) return;
+  keyAllowed [e.which] = false;*/
+
+  switch(e.keyCode)
+  {
+    case 37:
+      document.getElementById("div_test").innerHTML += "←";
+	  combo+="←";
+      break;
+	case 38:
+      document.getElementById("div_test").innerHTML += "↑";
+	  combo+="↑";
+      break;
+	case 39:
+      document.getElementById("div_test").innerHTML += "→";
+	  combo+="→";
+      break;
+	case 40:
+      document.getElementById("div_test").innerHTML += "↓";
+	  combo+="↓";
+      break;
+	case 90:
+	  document.getElementById("div_test").innerHTML += "攻";
+	  combo+="攻";
+      break;
+  }
+}
+
+/*document.onkeyup=function(e){
+
+  keyAllowed [e.which] = true;
+
+  switch(e.keyCode)
+  {
+    case 65:
+      music_C.pause();
+      music_C.currentTime=0;
+  }
+}*/
+
+var timer = setInterval(re_draw,50);
+var combo_timer = setInterval(check_input,200);
+
+function re_draw()
+{	
+	ctx.fillStyle="#FFFFFF";
+	ctx.fillRect(0, 0,canvas_element.width , canvas_element.height);
+
+	ctx.fillStyle="#000000";
+	ctx.fillText(state,0,50);
+}
+
+function check_input()
+{
+	if(combo.indexOf("↓↑攻")>=0)
+	{
+		state="↓↑攻";
+	}
+	combo="";
+}
+
+</script>
+
+<body>
+</body>
+</html>
