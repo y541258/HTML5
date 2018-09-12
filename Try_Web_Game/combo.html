@@ -24,7 +24,7 @@ var combo_timer;
 var state="初始";
 var first_skill=[];
 
- $(document).ready(
+$(document).ready(
             function ()
             {
                 $.get('combo.txt', function(data)
@@ -41,25 +41,30 @@ document.onkeydown=function(e){
   
   if(!combo_timer)
   {
-	combo_timer = setTimeout(check_input,750);
+	combo_timer = setTimeout(reset_input,750);
   }
 
   switch(e.keyCode)
   {
     case 37:
 	  combo+="←";
+	  check_input();
       break;
 	case 38:
 	  combo+="↑";
+	  check_input();
       break;
 	case 39:
 	  combo+="→";
+	  check_input();
       break;
 	case 40:
 	  combo+="↓";
+	  check_input();
       break;
 	case 90:
 	  combo+="Z";
+	  check_input();
       break;
   }
 }
@@ -99,6 +104,10 @@ function check_input()
 			break;
 		}
 	}
+}
+
+function reset_input()
+{
 	combo="";
 	
 	clearTimeout(combo_timer);
