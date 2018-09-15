@@ -27,6 +27,8 @@ cp.push(new Point(110+graphic_center_offset,50+graphic_center_offset));
 var path_record=[];
 var record_flag=false;
 
+var collison_flag=false;
+
 var run_t=0;
 
 //character圖檔大小是64*64
@@ -112,8 +114,25 @@ ctx.fillStyle="#FFFFFF";
  var img= new Image();
 img.src="character.png";
 
+var img2= new Image();
+img2.src="障礙物.png";
+
+var wait_load_count=2;
+
 img.onload =function(){
-	re_draw();
+	wait_load_count--;
+	if(!wait_load_count)
+	{
+		re_draw();
+	}
+}
+
+img2.onload =function(){
+	wait_load_count--;
+	if(!wait_load_count)
+	{
+		re_draw();
+	}
 }
  
 function Point(x,y)
@@ -343,6 +362,27 @@ function re_draw()
 
 	ctx.drawImage(img,0,0,64,64,character_left,character_top,64,64);
 	
+	var imgData=ctx.getImageData(0,0,c.width,c.height);
+	
+	ctx.fillStyle="#FFFFFF"; 
+	ctx.fillRect(0,0,c.width,c.height);
+	ctx.drawImage(img2,0,0,479,478,100,10,479,478);
+	
+	var imgData2=ctx.getImageData(0,0,c.width,c.height);
+	
+for (var i=0;i<imgData.data.length;i+=4)
+{
+  if(imgData.data[i]!=255 && imgData2.data[i]!=255)
+  {
+   collison_flag=true;
+   alert("碰撞");
+   break;
+  }
+}
+	if(!collison_flag)
+	{
+		ctx.drawImage(img,0,0,64,64,character_left,character_top,64,64);
+	}
 	requestAnimationFrame(re_draw);
 }
 
@@ -421,7 +461,6 @@ $(c).on('mousemove', function(e) {
 		//記錄下來,以後可以複製結果存到個檔案來讀取使用
 	}
 });
-
 </script>
 
 </body>
