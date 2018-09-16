@@ -123,7 +123,8 @@ img.onload =function(){
 	wait_load_count--;
 	if(!wait_load_count)
 	{
-		re_draw();
+		pre_a_star();
+		//re_draw();
 	}
 }
 
@@ -131,7 +132,8 @@ img2.onload =function(){
 	wait_load_count--;
 	if(!wait_load_count)
 	{
-		re_draw();
+		pre_a_star();
+		//re_draw();
 	}
 }
  
@@ -353,6 +355,53 @@ function cubic_Bezier(t)
     tCubed = tSquared * t;
 
 	result.push(new Point((ax * tCubed) + (bx * tSquared) + (cx * t) + cp[0].x,(ay * tCubed) + (by * tSquared) + (cy * t) + cp[0].y));
+}
+ 
+var map_node=[];
+
+for(var i=0;i<32;i++)
+{
+	map_node[i]=[];
+	for(var j=0;j<32;j++)
+	{
+		map_node[i][j]=false;
+	}
+}
+ 
+function pre_a_star()
+{
+	ctx.fillStyle="#FFFFFF"; 
+	ctx.fillRect(0,0,c.width,c.height);
+	ctx.drawImage(img2,0,0,479,478,100,10,479,478);
+	
+	var imgData2=ctx.getImageData(0,0,c.width,c.height);
+	
+	for (var i=0;i<imgData2.data.length;i+=4)
+	{
+		if(imgData2.data[i]!=255)
+		{
+			map_node[parseInt((i%2560)/80)][parseInt(i/38400)]=true;
+			//console.log(parseInt(i/38400));
+			//2560是因為,canvas目前是640*480
+			//640每個點記錄RGBA,640*4,因此一列是2560
+			//除以80是因為要把640*480,切成一塊塊20*15
+			//一列20個點,每個點記錄RGBA,同理20*4,就是80
+			//那高度的話就是15列,1列2560,2560*15=38400
+		}
+	}
+	
+	//看下障礙物的節點分佈情況
+	ctx.fillStyle="#000000"; 
+	for(var i=0;i<32;i++)
+	{
+		for(var j=0;j<32;j++)
+		{
+			if(map_node[i][j])
+			{
+				ctx.fillRect(20*i,15*j,20,15);
+			}
+		}
+	}
 }
  
 function re_draw()
