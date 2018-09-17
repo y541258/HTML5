@@ -9,6 +9,9 @@
 <div id="div_test"></div>
 
 <script>
+//A*演算法,
+//參考https://github.com/bgrins/javascript-astar/blob/master/astar.js
+//https://briangrinstead.com/blog/astar-search-algorithm-in-javascript/
 var path =[];
 var graphic_center_offset=64/2;
 var character_left=50;
@@ -124,7 +127,8 @@ img.onload =function(){
 	if(!wait_load_count)
 	{
 		pre_a_star();
-		//re_draw();
+		a_star(map_node[0][0],map_node[5][5]);
+		re_draw();
 	}
 }
 
@@ -133,7 +137,8 @@ img2.onload =function(){
 	if(!wait_load_count)
 	{
 		pre_a_star();
-		//re_draw();
+		a_star(map_node[0][0],map_node[5][5]);
+		re_draw();
 	}
 }
  
@@ -357,6 +362,188 @@ function cubic_Bezier(t)
 	result.push(new Point((ax * tCubed) + (bx * tSquared) + (cx * t) + cp[0].x,(ay * tCubed) + (by * tSquared) + (cy * t) + cp[0].y));
 }
  
+function graph_node(x,y,f,g,h,obscatle,parent,visited,closed,weight)
+{
+ this.x=x;
+ this.y=y;
+ this.f=f;
+ this.g=g;
+ this.h=h;
+ this.obscatle=obscatle;
+ this.parent=parent;
+ this.visited=visited;
+ this.closed=closed;
+ this.weight=weight;
+}
+
+graph_node.prototype.getCost = function(fromNeighbor) {
+  // Take diagonal weight into consideration.
+  if (fromNeighbor && fromNeighbor.x != this.x && fromNeighbor.y != this.y) {
+    return this.weight * 1.41421;
+  }
+  return this.weight;
+};
+
+graph_node.prototype.neighbors=function(node) {
+  var ret = [];
+  var x = node.x;
+  var y = node.y;
+
+  // West
+  if (map_node[x - 1] && map_node[x - 1][y]) {
+    ret.push(map_node[x - 1][y]);
+  }
+
+  // East
+  if (map_node[x + 1] && map_node[x + 1][y]) {
+    ret.push(map_node[x + 1][y]);
+  }
+
+  // South
+  if (map_node[x] && map_node[x][y - 1]) {
+    ret.push(map_node[x][y - 1]);
+  }
+
+  // North
+  if (map_node[x] && map_node[x][y + 1]) {
+    ret.push(map_node[x][y + 1]);
+  }
+
+  // Southwest
+  if (map_node[x - 1] && map_node[x - 1][y - 1]) {
+      ret.push(map_node[x - 1][y - 1]);
+  }
+
+    // Southeast
+  if (map_node[x + 1] && map_node[x + 1][y - 1]) {
+    ret.push(map_node[x + 1][y - 1]);
+  }
+
+  // Northwest
+  if (map_node[x - 1] && map_node[x - 1][y + 1]) {
+    ret.push(map_node[x - 1][y + 1]);
+  }
+
+  // Northeast
+  if (map_node[x + 1] && map_node[x + 1][y + 1]) {
+    ret.push(map_node[x + 1][y + 1]);
+  }
+
+  return ret;
+}
+
+function pathTo(node) {
+  var curr = node;
+  var path = [];
+  while (curr.parent) {
+    path.unshift(curr);
+    curr = curr.parent;
+  }
+  console.dir(path);
+  for(var i=0;i<path.length;i++)
+  {
+	path_record.push(new Point(path[i].x*20,path[i].y*15))
+  }
+  timer_id =setInterval(move_with_arc,10);
+  return path;
+}
+
+var open_list=[];
+var close_list=[];
+
+function a_star(start, end){  
+	for(var i=0;i<32;i++)
+	{
+		for(var j=0;j<32;j++)
+		{
+			cleanNode(map_node[i][j]);
+		}
+	}
+	
+    start.h = heuristic(start, end);
+    open_list.push(start);
+
+    while (open_list.length > 0) {
+
+      // Grab the lowest f(x) to process next.  Heap keeps this sorted for us.
+      var currentNode = open_list.pop();
+
+      // End case -- result has been found, return the traced path.
+      if (currentNode === end) {
+        return pathTo(currentNode);
+      }
+
+      // Normal case -- move currentNode from open to closed, process each of its neighbors.
+      currentNode.closed = true;
+
+      // Find all neighbors for the current node.
+      var neighbors = currentNode.neighbors(currentNode);
+
+      for (var i = 0, il = neighbors.length; i < il; ++i) {
+        var neighbor = neighbors[i];
+
+        if (neighbor.closed || neighbor.obscatle) {
+          // Not a valid node to process, skip to next neighbor.
+          continue;
+        }
+
+        // The g score is the shortest distance from start to current node.
+        // We need to check if the path we have arrived at this neighbor is the shortest one we have seen yet.
+        var gScore = currentNode.g + neighbor.getCost(currentNode);
+        var beenVisited = neighbor.visited;
+
+        if (!beenVisited || gScore < neighbor.g) {
+
+          // Found an optimal (so far) path to this node.  Take score for node to see how good it is.
+          neighbor.visited = true;
+          neighbor.parent = currentNode;
+          neighbor.h = neighbor.h || heuristic(neighbor, end);
+          neighbor.g = gScore;
+          neighbor.f = neighbor.g + neighbor.h;
+
+          /*if (closest) {
+            // If the neighbour is closer than the current closestNode or if it's equally close but has
+            // a cheaper path than the current closest node then it becomes the closest node
+            if (neighbor.h < closestNode.h || (neighbor.h === closestNode.h && neighbor.g < closestNode.g)) {
+              closestNode = neighbor;
+            }
+          }*/
+
+          if (!beenVisited) {
+            // Pushing to heap will put it in proper place based on the 'f' value.
+            open_list.push(neighbor);
+          }
+        }
+      }
+    }
+
+    /*if (closest) {
+      return pathTo(closestNode);
+    }*/
+
+    // No result was found - empty array signifies failure to find path.
+    alert("無法抵達目的地");
+	return [];
+}
+
+function cleanNode(node) 
+{
+    node.f = 0;
+    node.g = 0;
+    node.h = 0;
+    node.visited = false;
+    node.closed = false;
+    node.parent = null;
+}
+
+function heuristic(pos0, pos1) {
+      var D = 1;
+      var D2 = Math.sqrt(2);
+      var d1 = Math.abs(pos1.x - pos0.x);
+      var d2 = Math.abs(pos1.y - pos0.y);
+      return (D * (d1 + d2)) + ((D2 - (2 * D)) * Math.min(d1, d2));
+}
+
 var map_node=[];
 
 for(var i=0;i<32;i++)
@@ -364,7 +551,7 @@ for(var i=0;i<32;i++)
 	map_node[i]=[];
 	for(var j=0;j<32;j++)
 	{
-		map_node[i][j]=false;
+		map_node[i].push(new graph_node(i,j,0,0,0,false,null,false,false,1));
 	}
 }
  
@@ -380,7 +567,7 @@ function pre_a_star()
 	{
 		if(imgData2.data[i]!=255)
 		{
-			map_node[parseInt((i%2560)/80)][parseInt(i/38400)]=true;
+			map_node[parseInt((i%2560)/80)][parseInt(i/38400)].obscatle=true;
 			//console.log(parseInt(i/38400));
 			//2560是因為,canvas目前是640*480
 			//640每個點記錄RGBA,640*4,因此一列是2560
@@ -391,17 +578,17 @@ function pre_a_star()
 	}
 	
 	//看下障礙物的節點分佈情況
-	ctx.fillStyle="#000000"; 
+	/*ctx.fillStyle="#000000"; 
 	for(var i=0;i<32;i++)
 	{
 		for(var j=0;j<32;j++)
 		{
-			if(map_node[i][j])
+			if(map_node[i][j].obscatle)
 			{
 				ctx.fillRect(20*i,15*j,20,15);
 			}
 		}
-	}
+	}*/
 }
  
 function re_draw()
