@@ -127,7 +127,6 @@ img.onload =function(){
 	if(!wait_load_count)
 	{
 		pre_a_star();
-		a_star(map_node[0][0],map_node[5][5]);
 		re_draw();
 	}
 }
@@ -137,7 +136,6 @@ img2.onload =function(){
 	if(!wait_load_count)
 	{
 		pre_a_star();
-		a_star(map_node[0][0],map_node[5][5]);
 		re_draw();
 	}
 }
@@ -432,6 +430,16 @@ graph_node.prototype.neighbors=function(node) {
   return ret;
 }
 
+function change_to_node_axis_x(x)
+{
+	return parseInt(x/20);
+}
+
+function change_to_node_axis_y(y)
+{
+	return parseInt(y/15);
+}
+
 function pathTo(node) {
   var curr = node;
   var path = [];
@@ -464,7 +472,22 @@ function a_star(start, end){
     open_list.push(start);
 
     while (open_list.length > 0) {
-
+	var min_f_index=0;
+	var temp=open_list[0].f;
+	
+	  for(var i=0;i<open_list.length;i++)
+	  {
+		if(open_list[i].f < temp)
+		{
+		 temp=open_list[i].f;
+		 min_f_index=i;
+		}
+	  }
+	  
+	  temp=open_list[min_f_index];
+	  open_list[min_f_index]=open_list[open_list.length-1];
+	  open_list[open_list.length-1]=temp;
+	  
       // Grab the lowest f(x) to process next.  Heap keeps this sorted for us.
       var currentNode = open_list.pop();
 
@@ -509,8 +532,9 @@ function a_star(start, end){
             }
           }*/
 
-          if (!beenVisited) {
-            // Pushing to heap will put it in proper place based on the 'f' value.
+		  
+          if (!beenVisited)
+		  {
             open_list.push(neighbor);
           }
         }
@@ -611,7 +635,7 @@ for (var i=0;i<imgData.data.length;i+=4)
   if(imgData.data[i]!=255 && imgData2.data[i]!=255)
   {
    collison_flag=true;
-   alert("碰撞");
+   /*alert("碰撞");*/
    break;
   }
 }
@@ -619,6 +643,8 @@ for (var i=0;i<imgData.data.length;i+=4)
 	{
 		ctx.drawImage(img,0,0,64,64,character_left,character_top,64,64);
 	}
+	
+	collison_flag=false;
 	requestAnimationFrame(re_draw);
 }
 
@@ -648,21 +674,17 @@ function click_region(id,left,top,width,height)
             self.left + self.width > mouse.x && 
             self.top < mouse.y && 
             self.top + self.height > mouse.y) {
-			/*
-			alert(now_store_item[self.id+1] + " " + items_name[now_store_item[self.id+1]])
-			ws.send("buy," + parseInt(parseInt(now_store_item[self.id+1])+1) + "," + self.id);
-			//now_store_item[self.id+1]+1 因為編號是從1開始,所以再+1
-			*/
+			
+			a_star(map_node[change_to_node_axis_x(character_left)][change_to_node_axis_y(character_top)],map_node[change_to_node_axis_x(mouse.x)][change_to_node_axis_y(mouse.y)])
+			//測試定點用(一開始起點是在[2][3])
+			//a_star(map_node[change_to_node_axis_x(character_left)][change_to_node_axis_y(character_top)],map_node[2][1]);
         } 
     });
 }
 
 var elements=[];
 
-for(var i=0;i<5;i++)
-{
-	elements.push(new click_region(i,30+i*120,50,120,90));
-}
+elements.push(new click_region(1,0,0,640,480));
 
 	
 $(c).on('click', function(e) {
