@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<meta charset="utf-8"> 
+<html>
+<body>
+<script src="jquery-3.3.1.js"></script>
+<!-- Create a simple CodeMirror instance -->
+<link rel="stylesheet" href="codemirror.css">
+<script src="codemirror.js"></script>
+<textarea id="input_data"></textarea>
+<button id="run">執行</button>
+<div id="div_test"></div>
+<script>
+  var editor = CodeMirror.fromTextArea(document.getElementById('input_data'), {
+    lineNumbers: true
+  });
+</script>
+
+
+<script>
+
+//setInterval(compute,10000);
+
+run.addEventListener("click",compute);
+
+var test_a=1;
+
+function compute(){
+	console.log(editor.getValue());
+	//var test_b=2;
+	//eval(editor.getValue());
+	$("div#div_test").html(editor.getValue());
+	//run.click();
+}
+</script>
+
+</body>
+</html>
