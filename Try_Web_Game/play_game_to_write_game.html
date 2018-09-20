@@ -7,6 +7,8 @@
 <script src="require.js"></script>
 <textarea id="input_data"></textarea>
 <button id="run">執行</button>
+<button id="to_see">看解答</button>
+<button id="recover" disabled>還原</button>
 <div id="div_test"></div>
 <script>
 var editor;
@@ -23,19 +25,65 @@ require([
 
 <script>
 
+var image_count=5;
+
+function Picture(file_name)
+{
+	this.image=new Image();
+	this.image.id=file_name;
+	this.image.src=file_name;
+		
+	this.image.onload=function(){image_count--;}
+}
+
+monkey_1 = new Picture("孫麗1.png");
+monkey_2 = new Picture("孫麗2.png");
+cat_1 = new Picture("砂華姬1.png");
+cat_1 = new Picture("砂華姬2.png");
+chat = new Picture("對話框.png");
+
+canvas_element = document.createElement("canvas");
+canvas_element.setAttribute("width",640);
+canvas_element.setAttribute("height",480);
+//canvas_element.style="display:block; position:absolute; top:10px; left:10px;";
+document.documentElement.appendChild(canvas_element);
+var ctx = canvas_element.getContext("2d");
+
+check_load_id=setInterval(check_load,20);
+
+function check_load(){
+	clearInterval(check_load_id);
+	ctx.drawImage(monkey_1.image,0,0,100,96,200,100,100,96);
+	ctx.drawImage(chat.image,0,0,304,76,300,100,304,76);
+	ctx.font="40px 標楷體";
+	ctx.fillText("你好",330,150);
+}
+
 //setInterval(compute,10000);
 
 run.addEventListener("click",compute);
-
-var test_a=1;
+to_see.addEventListener("click",do_something);
+recover.addEventListener("click",recover_before);
 
 function compute(){
 	console.log(editor.getValue());
-	//var test_b=2;
 	//eval(editor.getValue());
 	$("div#div_test").html(editor.getValue());
 	//run.click();
 }
+
+function do_something(){
+	document.getElementById("recover").disabled = false;
+	$.get("play_game_to_write_game.html",function(data){
+		editor.setValue(data);
+	},"text");
+}
+
+function recover_before(){
+	editor.execCommand("undo");
+	alert("其實就是ctrl-z");
+}
+
 </script>
 
 </body>
