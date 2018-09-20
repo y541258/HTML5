@@ -9,6 +9,7 @@
 <button id="run">執行</button>
 <button id="to_see">看解答</button>
 <button id="recover" disabled>還原</button>
+<button id="save_file">存檔</button>
 <div id="div_test"></div>
 <script>
 var editor;
@@ -64,6 +65,7 @@ function check_load(){
 run.addEventListener("click",compute);
 to_see.addEventListener("click",do_something);
 recover.addEventListener("click",recover_before);
+save_file.addEventListener("click",download);
 
 function compute(){
 	console.log(editor.getValue());
@@ -84,6 +86,22 @@ function recover_before(){
 	alert("其實就是ctrl-z");
 }
 
+
+//https://stackoverflow.com/questions/2897619/using-html5-javascript-to-generate-and-save-a-file
+function download() {
+	var download_link = document.createElement('a');
+    download_link.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(editor.getValue()));
+    download_link.setAttribute('download', "avoid_repeat_filename_game_stage_1.html");
+
+    if (document.createEvent) {
+        var event = document.createEvent('MouseEvents');
+        event.initEvent('click', true, true);
+        download_link.dispatchEvent(event);
+    }
+    else {
+        download_link.click();
+    }
+}
 </script>
 
 </body>
