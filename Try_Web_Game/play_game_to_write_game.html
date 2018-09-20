@@ -3,16 +3,21 @@
 <html>
 <body>
 <script src="jquery-3.3.1.js"></script>
-<!-- Create a simple CodeMirror instance -->
 <link rel="stylesheet" href="codemirror.css">
-<script src="codemirror.js"></script>
+<script src="require.js"></script>
 <textarea id="input_data"></textarea>
 <button id="run">執行</button>
 <div id="div_test"></div>
 <script>
-  var editor = CodeMirror.fromTextArea(document.getElementById('input_data'), {
-    lineNumbers: true
+var editor;
+require([
+  "codemirror", "htmlmixed"
+], function(CodeMirror) {
+    editor = CodeMirror.fromTextArea(document.getElementById('input_data'), {
+	mode: "htmlmixed",
+	lineNumbers: true
   });
+});
 </script>
 
 
