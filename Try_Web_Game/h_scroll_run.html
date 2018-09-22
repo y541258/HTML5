@@ -1,0 +1,232 @@
+<!DOCTYPE>
+<meta charset="utf-8"> 
+<html>
+<head>
+</head>
+
+<body>
+<canvas id="canvas" width="640" height="480" ></canvas>
+<div id="div_test"></div>
+<script>
+
+//跳躍相關變數寫在最前面
+var jump_flag = false;
+
+var jump_height = 0;
+//跳躍的高度,最高不能高過一個值
+//其實也可以啦
+//只是若值太高的話,會不太像跳躍
+//在降落時,比較是翱翔、用滑翔翼一類的
+//跳躍高度很高的話
+//障礙物也會很不好設計
+
+var floor_height = 600-20-204;
+//英文是 地板_高度
+//理論上地板高度這邊,要用碰撞偵測的
+//但目前尚未做碰撞偵測的部份,先用固定值代替
+//600理論上要用canvas的高度來代替
+//至於20是為了配合地板的矩形高度 
+//-204是後來運作時才加的
+//-204原因是配合圖檔高度
+//圖檔高度的起點是用圖檔左上角來算的,所以需要額外處理
+
+var canvas_element = document.getElementById("canvas");
+var ctx=canvas_element.getContext("2d");
+ctx.fillStyle="#00CCCC";
+ctx.fillRect(0, 0, 640, 480);
+
+function Picture(id,img,left,top,zIndex,width,height)
+{
+	this.id=id;
+	this.image = new Image();
+	this.image.src=img;
+	
+	var self=this;
+	
+	this.image.onload = function(){self.draw_flag=true;}
+	this.left= left;
+	this.top= top;
+	this.zIndex = zIndex; 
+	this.width=width;
+	this.height=height;
+	this.draw_flag = false;
+}
+
+var test_1 = new Picture(0,"character.png",0,600-20-204,3,64,64);
+var bg_1 = new Picture(1,"background_1.jpg",0,0,3,640,480);
+var bg_2 = new Picture(2,"background_2.jpg",0,0,3,640,480);
+
+var elements = [];
+	
+// Add element.
+elements.push(test_1);
+
+var t=0;
+
+function re_draw()
+{
+	ctx.fillStyle="#00CCCC";
+	ctx.fillRect(0, 0, 640, 480);
+	
+	if(t==640)
+	{	
+		t=0;
+		var temp;
+		temp=bg_1;
+		bg_1=bg_2;
+		bg_2=temp;
+	}
+	ctx.drawImage(bg_1.image,t,0,640-t,480,0,0,640-t,480)
+	ctx.drawImage(bg_2.image,0,0,640,480,640-t,0,640,480)
+	t++;
+
+  if(jump_flag) //躍動過程
+  {
+	if(jump_height +5 < 30)
+	//這邊可能要用跳躍一次高度乘上次數來取代常數值較為合理
+	{
+	    test_1.top -= 5;
+		jump_height += 5;
+	}
+	else
+	{
+		jump_height = 30;
+	}
+  }
+  else //墜落
+  //要注意的是,墜落過程中不可以再次跳躍
+  //所以要找些資訊
+  //在按下跳躍鍵的時候能夠判斷現在是否在跳躍
+  //通常橫版過關遊戲,特別是仿洛克人、超級瑪莉歐的那類
+  //沒有兩段跳問題
+  //不過若要設計兩段跳
+  //也是差不多的思維
+  //只是可能要多些狀態變數與if敘述
+  //那些狀態變數與if敘述
+  //其實就是俗稱的 有限狀態機(FSM)
+  {
+	//jump_height = 0; //清空跳躍高度的設定
+	//後來想到↑ 這麼設計可能比較難想,較容易有問題
+  
+	if(jump_height > 0)
+	{
+		if(test_1.top +5  < floor_height)
+		{
+			test_1.top += 5;
+		}
+		else
+		{
+			test_1.top = floor_height;
+			jump_height = 0;
+		}
+	}
+	
+	//↑以後要用碰撞偵測改良
+	
+	if(jump_height < 0)
+	{
+		jump_height = 0;
+	}
+  }
+
+	elements.forEach(function(element) {
+		if(element.draw_flag)
+		{
+			ctx.drawImage(element.image,element.left, element.top);
+		}
+	});
+}
+
+var timer = setInterval(re_draw,50);
+
+document.addEventListener("keydown",jump,false);
+document.addEventListener("keyup",face_jump,false);
+
+function jump(e){
+//由於空白鍵,在網頁過大時,會有些問題在
+  //(就有些預設功能是按空白往下跳,類似PageDown鍵的功能)
+  //因此安全起見
+  //先寫一行
+  //避免傳統按鍵的功能起作用的
+  //好像是e.preventDefault();
+  //就避免按鍵執行他預設的功能
+  //但用這功能後,F5的 網頁重新整理(refresh) 功能
+  //就需要自己再手動設定了
+  //理論上如果只是網頁過大問題
+  //應該利用CSS語法來處理
+  //這是種投機取巧的做法!!
+	e.preventDefault();
+
+	console.log(e.keyCode);
+	//用來查各按鍵的鍵碼
+	//ASCII碼跟鍵盤碼不見得一樣
+	//在Win32 API中  鍵盤碼對應的東西大多是
+	//VK_.....  VK就是 virtual key
+  
+  //Win32 API 的 VK_UP這類東西,對應的依然是個數值
+  //只是在別的header file(標頭檔)
+  //有 #define VK_UP 38 這類操作
+  //所以可以用英文名來取代具體數值
+  
+  //Win32API很常用#define功能來取代很多不太好記的東西
+  //像是WM_PAINT 就Windows的繪圖事件
+  //其實也是個常數值
+  
+  //類似javascript中
+  //ctx.fillStyle="#FFFFFF"; 
+  //也可以寫成ctx.fillStyle="white";
+  //就一種用來區分哪個按鍵被按下去的系統
+
+  //if(e.keyCode==37){direction=3; step++; step%=3; w-=5;}	//左
+  //if(e.keyCode==38){direction=0; step++; step%=3; h-=5;}	//上
+  //if(e.keyCode==39){direction=1; step++; step%=3; w+=5;}	//右
+  //if(e.keyCode==40){direction=2; step++; step%=3; h+=5;}	//下
+  
+  if(e.keyCode==37){test_1.left-=5;}	//左
+  //if(e.keyCode==38){test_1.top-=5;}	//上
+  //先處理跳躍
+  //重繪那邊,要整個畫面重繪
+  //這也是HTML5的缺點
+  //Canvas本身在繪製時,是整個畫面刷新
+  //也就是相對耗電(在移動裝置上較為明顯)
+  //正常的作法是,只改變跟上張圖不同的地方
+  //該技術名字叫做 dirty rectangle(印象中,大陸直接稱為髒矩形)
+  //也就是說只更新需要重畫的地方
+  if(e.keyCode==39){test_1.left+=5;}	//右
+  if(e.keyCode==40){test_1.top+=5;}	//下
+
+  //遊戲中的重力
+  //其實不是萬有引力
+  //而是著重於 上拋 或 下拋的等加速度公式
+  //(要不要考慮空氣阻力看個人喜好,但公式基本上就長那樣)
+  //當然通常是 上拋
+  //也就是說,只要座標能持續變化,變回原來的位置
+  //假若又是由下往上的,就是遊戲中的重力
+  //我這邊先不用公式
+  //純粹隨意想來實作下
+  
+  if(e.keyCode==32)	//空白鍵,這邊是跳躍用
+  {
+	if(jump_height == 0)
+	{
+		jump_flag = true;
+	}
+	else if(jump_height >= 30)
+	{
+		face_jump(e);
+	}
+  }
+}
+
+function face_jump(e)
+{
+  if(e.keyCode==32)	//空白鍵,這邊是跳躍放開時的狀況
+  //有個問題是:如果玩家不鬆開跳躍鍵的話呢?
+  {
+	jump_flag = false;
+  }
+}
+
+</script>
+</body>
+</html>
