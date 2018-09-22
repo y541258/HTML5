@@ -32,14 +32,21 @@ function Collision_Region(left,top,width,height)
 	$(canvas_element).on('collision_detect', function(e, role){	
 		console.log(jump_flag);
 		if(	self.left+self.width < role.left &&
-			self.top > role.top+role.height)
+			//原先寫self.top > role.top+role.height)這樣太過偷懶,會導致跳不起來的問題
+			self.top == role.top+role.height)
 		{
 			ground_flag=false;
 		}
 
+		if (self.left < role.left+role.width &&
+			self.left >= 0 &&
+				self.top+self.height > role.top+role.height &&
+				self.top < role.top+role.height) { 
+				alert("左側碰撞");
+			}
+		
 		if(!ground_flag)
 		{
-		
 			if(	self.left < role.left+role.width &&
 				self.left+self.width>role.left &&
 				//self.top+self.height > role.top+role.height &&
@@ -58,12 +65,6 @@ function Collision_Region(left,top,width,height)
 					jump_height=0;
 					jump_flag=false;
 				//}
-			}
-		
-			if (self.left < role.left+role.width &&
-				self.top+self.height > role.top+role.height &&
-				self.top < role.top+role.height) { 
-				//alert("左側碰撞");
 			}
 		}
 	});
