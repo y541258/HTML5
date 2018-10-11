@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<meta charset="utf-8"> 
+<html>
+<body>
+
+<script src="jquery-3.3.1.js"></script>
+
+<canvas id="myCanvas" width="640" height="480"></canvas>
+
+<script>
+
+/*var ws;
+    $(function(){
+        link();
+    })
+    function link () {
+	    //ws = new WebSocket('ws://' + window.location.host + '/ws');
+        ws = new WebSocket("ws://127.0.0.1:8080/ws");//连接服务器
+		ws.binaryType = 'arraybuffer';
+        ws.onopen = function(event){
+            alert('連接');
+        };
+		
+        ws.onmessage = function (event) {
+		
+		var dv = new DataView(event.data);
+		var textDecoder = new TextDecoder('utf-8');
+		str = textDecoder.decode(dv);
+		
+		which_message = str.split(',')
+		
+		switch (which_message[0])
+		{
+			case "store":
+				buy_item = [];
+				user_order=["user","","","","",""];
+				now_store_item = which_message;
+				break;
+			case "buy":
+				buy_item = which_message;
+				break;
+			case "user":
+				user_order = which_message;
+				break;
+				
+		}
+		
+		console.log(which_message);
+
+		re_draw();
+        
+        ws.onclose = function(event){alert("與伺服器連線中斷");};
+        ws.onerror = function(event){alert("WebSocket Error");};
+    }
+}*/
+
+var c=document.getElementById("myCanvas");
+var ctx=c.getContext("2d");
+
+ctx.fillStyle="#FFFFFF";
+ 
+function re_draw()
+{
+	ctx.fillStyle="#FFFFFF"; 
+
+	ctx.fillRect(0,0,c.width,c.height);
+
+	ctx.strokeStyle="#000000";
+	ctx.fillStyle="#000000";
+	ctx.font="40px 標楷體";
+
+	//時間與行動力格
+	ctx.rect(10,10,210,70); 
+	
+	for(var i=0;i<3;i++)
+	{
+		for(var j=0;j<3;j++)
+		{
+			//地形格
+			ctx.rect(10+70*j,100+50*i,70,50);
+		}
+	}
+	
+	//位置資訊
+	ctx.rect(10,260,210,150)
+	
+	//人物格
+	for(var i=0;i<4;i++)
+	{
+		ctx.rect(240+100*i,10,100,96)
+	}
+	
+	//人物或事件資訊格
+	ctx.rect(240,115,400,260)
+	
+	//行動格
+	for(var i=0;i<2;i++)
+	{
+		ctx.rect(240+100*i,385,100,30)
+	}
+	
+	//下一回合格
+	ctx.rect(540,385,100,30)
+	
+	ctx.stroke();
+}
+
+function shuffle(array) {
+  var m = array.length, t, i;
+  while (m) {
+    i = Math.floor(Math.random() * m--);
+    t = array[m];
+    array[m] = array[i];
+    array[i] = t;
+  }
+}
+
+function click_region(id,left,top,width,height)
+{
+	this.id=id;
+
+	var self=this;
+
+	this.left=left;
+	this.top=top;
+	this.width=width;
+	this.height=height;
+	
+	$(c).on('handleClick', function(e, mouse) {
+        if (self.left < mouse.x && 
+            self.left + self.width > mouse.x && 
+            self.top < mouse.y && 
+            self.top + self.height > mouse.y) {
+			//ws.send("buy," + parseInt(parseInt(now_store_item[self.id+1])+1) + "," + self.id);
+			
+        } 
+    });
+}
+
+var elements=[];
+
+/*for(var i=0;i<5;i++)
+{
+	elements.push(new click_region(i,30+i*120,50,120,90));
+}*/
+
+	
+$(c).on('click', function(e) { 
+	var mouse= { 
+        x: e.pageX - c.offsetLeft, 
+        y: e.pageY - c.offsetTop
+	} 
+         
+    //fire off synthetic event containing mouse coordinate info 
+    $(c).trigger('handleClick', [mouse]);
+ });
+
+ re_draw();
+</script>
+
+</body>
+</html>
