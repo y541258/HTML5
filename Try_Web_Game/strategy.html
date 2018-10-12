@@ -116,6 +116,8 @@ character_list[1]={name:"砂華姬",position:8,friend:{character:[{name:"孫麗"
 console.log(JSON.stringify(character_list));
 localStorage.setItem("character_list_save",JSON.stringify(character_list));
 console.log(localStorage.getItem("character_list_save"));
+var character_list_load=JSON.parse(localStorage.getItem("character_list_save"));
+console.log(character_list_load[1]);
 
 function shuffle(array) {
   var m = array.length, t, i;
