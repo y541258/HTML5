@@ -105,6 +105,18 @@ function re_draw()
 	ctx.stroke();
 }
 
+var character_list_test = '{ "character" : [' +
+'{ "name":"孫麗" , "position":"0" },' +
+'{ "name":"砂華姬" , "position":"8" } ]}';
+
+var character_list=[];
+character_list[0]={name:"孫麗",position:0,friend:{character:[{name:"砂華姬"},{name:"天仙"}]}}
+character_list[1]={name:"砂華姬",position:8,friend:{character:[{name:"孫麗"},{name:"天仙"}]}}
+
+console.log(JSON.stringify(character_list));
+localStorage.setItem("character_list_save",JSON.stringify(character_list));
+console.log(localStorage.getItem("character_list_save"));
+
 function shuffle(array) {
   var m = array.length, t, i;
   while (m) {
