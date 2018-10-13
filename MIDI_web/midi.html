@@ -61,13 +61,17 @@ for(var i=0;i<music_file_name.length;i++)
 }
 
 function suddenly(){
-	for(var i=0;i<music_file_name.length;i++)
-	{
-		audio_element[i].pause();
-		audio_element[i].currentTime=0;
-	}
+	document.getElementById(str[index-2]).pause();
+	document.getElementById(str[index-2]).currentTime=0;
 	
 	play_music();
+}
+
+function cont(){
+	if(str[index])
+	{
+		document.getElementById(str[index]).play();
+	}
 }
 
 p.addEventListener("click",parse_sheet);
@@ -75,16 +79,14 @@ p.addEventListener("click",parse_sheet);
 function parse_sheet(){
   str = sheet_music.value.split(" ");
   play_music(0)
-  console.log(str);
 }
 
 function play_music(){
-console.log(index);
  if(str[index])
  {
 	document.getElementById(str[index++]).play();
-	setTimeout(suddenly,str[index++]);
-	console.log(index);
+	setTimeout(suddenly,str[index]);
+	setTimeout(cont,str[index++]-100);
  }
  else
  {
