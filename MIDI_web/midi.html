@@ -12,6 +12,9 @@
 
 <textarea id="sheet_music"></textarea>
 <button id="p">播放</button>
+<button id="r">隨機</button>
+<button id="dis">顯示譜</button>
+<input id="note_number" value="音符數量"></input>
 
 
 <script>
@@ -24,6 +27,12 @@ var music_order=[];
 var music_file_name = [];
 var str;
 var index=0;
+var time_value = [];
+
+for(var i=3;i<=16;i++)
+{
+ time_value.push(125*i);
+}
 
 music_order.push("1");
 music_order.push("c");
@@ -61,30 +70,71 @@ for(var i=0;i<music_file_name.length;i++)
 }
 
 function suddenly(){
-	document.getElementById(str[index-2]).pause();
-	document.getElementById(str[index-2]).currentTime=0;
+	if(str[index-2] != "0")
+	{
+		document.getElementById(str[index-2]).pause();
+		document.getElementById(str[index-2]).currentTime=0;
+	}
 	
 	play_music();
 }
 
 function cont(){
-	if(str[index])
+	if(str[index] && str[index]!="0")
 	{
 		document.getElementById(str[index]).play();
 	}
 }
 
 p.addEventListener("click",parse_sheet);
+r.addEventListener("click",random_sheet);
+dis.addEventListener("click",display_sheet);
 
 function parse_sheet(){
-  str = sheet_music.value.split(" ");
-  play_music(0)
+  if(sheet_music.value)
+  {
+	str = sheet_music.value.split(" ");
+	str =str.filter(function(e){return e});
+  }
+  play_music();
+}
+
+function random_sheet(){
+  if( isNaN(parseFloat(note_number.value)) || isFinite(note_number.value))
+  {
+	note_number.value=5;
+  }
+  
+  str=[];
+  
+  for(var i=0;i<note_number.value;i++)
+  {
+	str.push(music_file_name[Math.floor(Math.random() * music_file_name.length)]);
+	str.push(time_value[Math.floor(Math.random() * time_value.length)]);
+  }
+  
+  play_music();
+}
+
+function display_sheet(){
+ for(var i=0;i<str.length;i++)
+ {
+	sheet_music.value += " ";
+	sheet_music.value += str[i];
+ }
 }
 
 function play_music(){
  if(str[index])
  {
-	document.getElementById(str[index++]).play();
+	if(str[index] != 0)
+	{
+		document.getElementById(str[index++]).play();
+	}
+	else
+	{
+		index++;
+	}
 	setTimeout(suddenly,str[index]);
 	setTimeout(cont,str[index++]-100);
  }
