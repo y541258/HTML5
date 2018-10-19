@@ -93,7 +93,7 @@ mediaRecorder.onstop = function(evt) {
 	mediaRecorder.start();
 	osc.start();
 	oscillator.frequency.setValueAtTime(0,0);
-	oscillator.start();
+	//oscillator.start();
 	mediaRecorder_mic.start();
 	 
 /*const G4 = 440 * Math.pow(2, -2/12); 
@@ -115,7 +115,7 @@ function draw() {
 time_count++;
 bufferLength = analyser.frequencyBinCount;
 dataArray = new Uint8Array(bufferLength);
-analyser.getByteTimeDomainData(dataArray);
+//analyser.getByteTimeDomainData(dataArray);
 analyser.getByteFrequencyData(dataArray);
 
 var drawVisual = requestAnimationFrame(draw);
@@ -130,6 +130,7 @@ var sliceWidth = 640 * 1.0 / bufferLength;
 var x = 0;
 
 var max=0;
+var max_index=0;
 
 for(var i = 0; i < bufferLength; i++) {
         barHeight = dataArray[i]/2;
@@ -140,6 +141,7 @@ for(var i = 0; i < bufferLength; i++) {
 		if(dataArray[i]>max)
 		{
 			max=dataArray[i];
+			max_index=i;
 		}
 		
         canvasCtx.fillStyle = 'rgb(' + (barHeight+100) + ',50,50)';
@@ -148,8 +150,8 @@ for(var i = 0; i < bufferLength; i++) {
         x += 10 + 1;
       }
 
-	  osc.frequency.setValueAtTime(21*max,ac.currentTime);
-	  oscillator.frequency.setValueAtTime(21*max,audioCtx.currentTime);
+	  osc.frequency.setValueAtTime(21*max_index,ac.currentTime);
+	  oscillator.frequency.setValueAtTime(21*max_index,audioCtx.currentTime);
 	
 	if(time_count >1000)
 	{
@@ -157,7 +159,7 @@ for(var i = 0; i < bufferLength; i++) {
 		mediaRecorder.stop();
 		mediaRecorder_mic.stop();
 		osc.stop();
-		oscillator.stop();
+		//oscillator.stop();
 		console.log(chunks);
 	}
 }
