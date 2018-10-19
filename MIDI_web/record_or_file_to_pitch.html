@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<meta charset="utf-8"> 
+<html>
+<body>
+
+<button id="startButton">錄音</button>
+<input id="audio_file" type="file" accept="audio/*" />
+<audio></audio>
+<audio id="audio_player" ></audio>
+<canvas id="myCanvas" width="640" height="480"></canvas>
+
+<script>
+var ac;
+var audioCtx;
+var analyser;
+var bufferLength;
+var dataArray;
+var distortionl;
+var osc;
+var t;
+var dest;
+var mediaRecorder;
+var chunks = [];
+var oscillator;
+
+document.getElementById("startButton").addEventListener("click", function() {
+  navigator.mediaDevices.getUserMedia({
+    audio: {
+      sampleSize: 8,
+      echoCancellation: true
+    }
+  //}).then(stream =>audioElement.srcObject = stream)
+  }).then(
+  function(stream)
+  {
+audioCtx= new (window.AudioContext || window.webkitAudioContext)();
+analyser = audioCtx.createAnalyser();
+//analyser.minDecibels = -90;
+//analyser.maxDecibels = -10;
+//analyser.smoothingTimeConstant = 0.85;
+analyser.fftSize = 2048;
+distortion = audioCtx.createWaveShaper();
+source = audioCtx.createMediaStreamSource(stream);
+source.connect(analyser);
+analyser.connect(distortion);
+distortion.connect(audioCtx.destination);
+
+
+oscillator= audioCtx.createOscillator()
+ac = new AudioContext();
+osc = ac.createOscillator();
+dest = ac.createMediaStreamDestination();
+mediaRecorder = new MediaRecorder(dest.stream);
+mediaRecorder.ondataavailable = function(evt) {
+       // push each chunk (blobs) in an array
+       chunks.push(evt.data);
+     };
+mediaRecorder.onstop = function(evt) {
+       // Make blob out of our blobs, and open it.
+       var blob = new Blob(chunks, { 'type' : 'audio/ogg; codec:opus' });
+       document.querySelector("audio").src = URL.createObjectURL(blob);
+	   
+	var a = document.createElement('a');
+    a.download = "out.ogg";
+    var src = window.URL.createObjectURL(blob);
+    a.href = src;
+    a.textContent = "Click here to download out.ogg";
+	document.documentElement.appendChild(a);
+     };
+
+	osc.connect(dest);
+	oscillator.connect(audioCtx.destination);
+	mediaRecorder.start();
+	osc.start();
+	oscillator.frequency.setValueAtTime(0,0);
+	oscillator.start();
+	 
+/*const G4 = 440 * Math.pow(2, -2/12); 
+const A4 = 440;
+const F4 = 440 * Math.pow(2, -4/12);
+const F3 = 440 * Math.pow(2, -16/12);
+const C4 = 440 * Math.pow(2, -9/12);*/
+
+draw();
+  })
+    .catch(err => log(err.name + ": " + err.message));
+}, false);
+
+
+var canvasCtx = myCanvas.getContext("2d");
+var time_count=0;
+
+function draw() {
+time_count++;
+bufferLength = analyser.frequencyBinCount;
+dataArray = new Uint8Array(bufferLength);
+analyser.getByteTimeDomainData(dataArray);
+analyser.getByteFrequencyData(dataArray);
+
+var drawVisual = requestAnimationFrame(draw);
+canvasCtx.fillStyle = 'rgb(200, 200, 200)';
+canvasCtx.fillRect(0, 0, 640, 480);
+
+canvasCtx.lineWidth = 2;
+canvasCtx.strokeStyle = 'rgb(0, 0, 0)';
+canvasCtx.beginPath();
+
+var sliceWidth = 640 * 1.0 / bufferLength;
+var x = 0;
+
+var max=0;
+
+for(var i = 0; i < bufferLength; i++) {
+        barHeight = dataArray[i]/2;
+		if(dataArray[i]>max)
+		{
+			max=dataArray[i];
+		}
+		
+        canvasCtx.fillStyle = 'rgb(' + (barHeight+100) + ',50,50)';
+        canvasCtx.fillRect(x,480-barHeight/2,10,barHeight);
+
+        x += 10 + 1;
+      }
+
+	  console.log(audioCtx.currentTime);
+	  osc.frequency.setValueAtTime(21*max,ac.currentTime);
+	  oscillator.frequency.setValueAtTime(21*max,audioCtx.currentTime);
+	
+	if(time_count >1000)
+	{
+		cancelAnimationFrame(drawVisual);
+		mediaRecorder.stop();
+		osc.stop();
+		oscillator.stop();
+
+		console.log(chunks);
+	}
+}
+
+
+  document.querySelector('input').onchange = function(){
+      var fileReader  = new FileReader;
+      fileReader.onload = function(){
+         var arrayBuffer = this.result;
+         }
+      fileReader.readAsArrayBuffer(this.files[0]);
+
+      var url = URL.createObjectURL(this.files[0]); 
+      audio_player.src = url; 
+      audio_player.play();
+    };
+</script>
+
+</body>
+</html>
