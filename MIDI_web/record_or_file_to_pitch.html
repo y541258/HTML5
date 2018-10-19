@@ -20,6 +20,7 @@ var osc;
 var t;
 var dest;
 var mediaRecorder;
+var mediaRecorder_mic;
 var chunks = [];
 var oscillator;
 
@@ -33,6 +34,26 @@ document.getElementById("startButton").addEventListener("click", function() {
   }).then(
   function(stream)
   {
+  mediaRecorder_mic = new MediaRecorder(stream);
+    const audioChunks = [];
+
+    mediaRecorder_mic.addEventListener("dataavailable", event => {
+      audioChunks.push(event.data);
+});
+
+mediaRecorder_mic.addEventListener("stop", event => {
+   var blob = new Blob(audioChunks, { 'type' : 'audio/ogg; codec:opus' });
+	   
+	var a = document.createElement('a');
+	var br = document.createElement('br');
+    a.download = "microphone.ogg";
+    var src = window.URL.createObjectURL(blob);
+    a.href = src;
+    a.textContent = "Click here to download microphone.ogg";
+	document.documentElement.appendChild(a);
+	document.documentElement.appendChild(br);
+});
+  
 audioCtx= new (window.AudioContext || window.webkitAudioContext)();
 analyser = audioCtx.createAnalyser();
 //analyser.minDecibels = -90;
@@ -58,7 +79,6 @@ mediaRecorder.ondataavailable = function(evt) {
 mediaRecorder.onstop = function(evt) {
        // Make blob out of our blobs, and open it.
        var blob = new Blob(chunks, { 'type' : 'audio/ogg; codec:opus' });
-       document.querySelector("audio").src = URL.createObjectURL(blob);
 	   
 	var a = document.createElement('a');
     a.download = "out.ogg";
@@ -74,6 +94,7 @@ mediaRecorder.onstop = function(evt) {
 	osc.start();
 	oscillator.frequency.setValueAtTime(0,0);
 	oscillator.start();
+	mediaRecorder_mic.start();
 	 
 /*const G4 = 440 * Math.pow(2, -2/12); 
 const A4 = 440;
@@ -112,6 +133,10 @@ var max=0;
 
 for(var i = 0; i < bufferLength; i++) {
         barHeight = dataArray[i]/2;
+		
+		/*osc.frequency.setValueAtTime(21*dataArray[i],ac.currentTime);
+		oscillator.frequency.setValueAtTime(21*dataArray[i],ac.currentTime);*/
+		
 		if(dataArray[i]>max)
 		{
 			max=dataArray[i];
@@ -123,7 +148,6 @@ for(var i = 0; i < bufferLength; i++) {
         x += 10 + 1;
       }
 
-	  console.log(audioCtx.currentTime);
 	  osc.frequency.setValueAtTime(21*max,ac.currentTime);
 	  oscillator.frequency.setValueAtTime(21*max,audioCtx.currentTime);
 	
@@ -131,9 +155,9 @@ for(var i = 0; i < bufferLength; i++) {
 	{
 		cancelAnimationFrame(drawVisual);
 		mediaRecorder.stop();
+		mediaRecorder_mic.stop();
 		osc.stop();
 		oscillator.stop();
-
 		console.log(chunks);
 	}
 }
