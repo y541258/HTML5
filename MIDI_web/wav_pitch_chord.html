@@ -13,6 +13,7 @@
 <button id="save_file">存檔</button>
 
 <script>
+//https://stackoverflow.com/questions/4974531/writing-musical-notes-to-a-wav-file
 var dv;
 var f;
 var video_content=[];
@@ -29,10 +30,26 @@ function handleFiles (files) { // files -> FileList 物件，裡面有 File 實�
 		//可查看moov→mdia→minf→stbl→stco各chunk的起點
 		//我是在測mdat的檔案格式
 		
+		var sampleFrequency = 44100;
+		var multiplier = 2.0 * Math.PI / sampleFrequency;
+		var volume = 12;
+		
 		for(var i=76;i<data.target.result.byteLength;i++)
 		{
-			dv.setInt8(i,128 + 127 * Math.sin(i));
+			dv.setInt8(i,128);
 		}
+		
+		console.log(dv.getInt8(0)+volume * Math.sin(i * multiplier * 440.0));
+		
+		for(var i=76;i<data.target.result.byteLength;i++)
+		{
+			dv.setInt8(i,dv.getInt8(i)+volume * Math.sin(i * multiplier * 440.0));
+		}
+		
+		/*for(var i=76;i<data.target.result.byteLength;i++)
+		{
+			dv.setInt8(i,dv.getInt8(i)+volume * Math.sin(i * multiplier * 880.0));
+		}*/
 		
 		f = new Blob([dv],{type: 'audio/wav'});
 		document.getElementById("a").src = window.URL.createObjectURL(f);
@@ -59,7 +76,7 @@ function download() {
 	var download_link = document.createElement('a');
 	var url = window.URL.createObjectURL(f);
 	download_link.href= url;
-    download_link.setAttribute('download', "cut.mp4");
+    download_link.setAttribute('download', "t.wav");
 	
     if (document.createEvent) {
         var event = document.createEvent('MouseEvents');
