@@ -31,15 +31,13 @@ function handleFiles (files) { // files -> FileList 物件，裡面有 File 實�
 		//我是在測mdat的檔案格式
 		
 		var sampleFrequency = 44100;
-		var multiplier = 2.0 * Math.PI / sampleFrequency;
-		var volume = 12;
+		var multiplier = 0.5 * Math.PI / sampleFrequency;
+		var volume = 11;
 		
 		for(var i=76;i<data.target.result.byteLength;i++)
 		{
 			dv.setInt8(i,128);
 		}
-		
-		console.log(dv.getInt8(0)+volume * Math.sin(i * multiplier * 440.0));
 		
 		for(var i=76;i<data.target.result.byteLength;i++)
 		{
