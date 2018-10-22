@@ -1,0 +1,76 @@
+<!DOCTYPE>
+<meta charset="utf-8"> 
+<html>
+<head>
+</head>
+<body>
+<script src="jquery-3.3.1.js"></script>
+<video id="v" width="320" height="240" controls autoplay></video> 
+<audio id="a" controls></audio>
+<div id="div_test"></div>
+
+<input type="file"></input>
+<button id="save_file">存檔</button>
+
+<script>
+var dv;
+var f;
+var video_content=[];
+const input = document.querySelector('input')
+input.addEventListener('change', handleFiles, false);
+function handleFiles (files) { // files -> FileList 物件，裡面有 File 實例
+  if (files.target.files[0]) {
+    const reader = new FileReader();
+	
+    reader.onload = function (data) {
+		dv = new DataView(data.target.result,0,data.target.result.byteLength);
+		
+		//http://www.onlinemp4parser.com/
+		//可查看moov→mdia→minf→stbl→stco各chunk的起點
+		//我是在測mdat的檔案格式
+		
+		for(var i=76;i<data.target.result.byteLength;i++)
+		{
+			dv.setInt8(i,128 + 127 * Math.sin(i));
+		}
+		
+		f = new Blob([dv],{type: 'audio/wav'});
+		document.getElementById("a").src = window.URL.createObjectURL(f);
+    }
+	
+    reader.readAsArrayBuffer(files.target.files[0]);
+  }
+}
+
+
+//https://stackoverflow.com/questions/19175174/capture-frames-from-video-with-html5-and-javascript
+function test(){
+var c = document.createElement("canvas");
+var ctx = c.getContext("2d");
+c.width = 160;
+c.height = 90;
+ctx.drawImage(v, 0, 0, 160, 90);
+//div_test.appendChild(c);
+}
+
+save_file.addEventListener("click",download);
+
+function download() {
+	var download_link = document.createElement('a');
+	var url = window.URL.createObjectURL(f);
+	download_link.href= url;
+    download_link.setAttribute('download', "cut.mp4");
+	
+    if (document.createEvent) {
+        var event = document.createEvent('MouseEvents');
+        event.initEvent('click', true, true);
+        download_link.dispatchEvent(event);
+    }
+    else {
+        download_link.click();
+    }
+}
+</script>
+
+</body>
+</html> 
