@@ -14,11 +14,13 @@
 
 <script>
 //https://stackoverflow.com/questions/4974531/writing-musical-notes-to-a-wav-file
-var dv;
+var dv,dv_1,dv_2;
 var f;
 var video_content=[];
-const input = document.querySelector('input')
+/*const input = document.querySelector('input')
 input.addEventListener('change', handleFiles, false);
+
+
 function handleFiles (files) { // files -> FileList 物件，裡面有 File 實例
   if (files.target.files[0]) {
     const reader = new FileReader();
@@ -31,7 +33,9 @@ function handleFiles (files) { // files -> FileList 物件，裡面有 File 實�
 		//我是在測mdat的檔案格式
 		
 		var sampleFrequency = 44100;
-		var multiplier = 0.5 * Math.PI / sampleFrequency;
+		sample_channel=2;
+		sample_byte=2;
+		var multiplier = 2.0 * Math.PI / (sampleFrequency*sample_channel*sample_byte);
 		var volume = 11;
 		
 		for(var i=76;i<data.target.result.byteLength;i++)
@@ -44,10 +48,10 @@ function handleFiles (files) { // files -> FileList 物件，裡面有 File 實�
 			dv.setInt8(i,dv.getInt8(i)+volume * Math.sin(i * multiplier * 440.0));
 		}
 		
-		/*for(var i=76;i<data.target.result.byteLength;i++)
+		for(var i=76;i<data.target.result.byteLength;i++)
 		{
 			dv.setInt8(i,dv.getInt8(i)+volume * Math.sin(i * multiplier * 880.0));
-		}*/
+		}
 		
 		f = new Blob([dv],{type: 'audio/wav'});
 		document.getElementById("a").src = window.URL.createObjectURL(f);
@@ -55,7 +59,94 @@ function handleFiles (files) { // files -> FileList 物件，裡面有 File 實�
 	
     reader.readAsArrayBuffer(files.target.files[0]);
   }
-}
+}*/
+
+var temp;
+$(document).ready(function (){
+
+var xhr = new XMLHttpRequest();
+xhr.open('GET', 'do.wav', true);
+xhr.responseType = 'arraybuffer';
+ 
+xhr.onload = function(e) {
+  // response is unsigned 8 bit integer
+  temp = new Uint8Array(this.response); 
+  
+  var file = new File([temp], "do.wav", {
+  type: "audio/wav",
+});
+
+var reader = new FileReader();
+
+reader.readAsArrayBuffer(file);
+reader.onload = function (data) {
+		dv = new DataView(data.target.result,0,data.target.result.byteLength);
+    }
+
+};
+ 
+xhr.send();
+
+//------------------
+var xhr_1 = new XMLHttpRequest();
+xhr_1.open('GET', 'do1.wav', true);
+xhr_1.responseType = 'arraybuffer';
+ 
+xhr_1.onload = function(e) {
+  // response is unsigned 8 bit integer
+  temp = new Uint8Array(this.response); 
+  
+  var file = new File([temp], "do.wav", {
+  type: "audio/wav",
+});
+
+var reader = new FileReader();
+
+reader.readAsArrayBuffer(file);
+reader.onload = function (data) {
+		dv_1 = new DataView(data.target.result,0,data.target.result.byteLength);
+    }
+
+};
+ 
+xhr_1.send();
+
+//------------------------
+var xhr_2 = new XMLHttpRequest();
+xhr_2.open('GET', 'do2.wav', true);
+xhr_2.responseType = 'arraybuffer';
+ 
+xhr_2.onload = function(e) {
+  // response is unsigned 8 bit integer
+  temp = new Uint8Array(this.response); 
+  
+  var file = new File([temp], "do.wav", {
+  type: "audio/wav",
+});
+
+var reader = new FileReader();
+
+reader.readAsArrayBuffer(file);
+reader.onload = function (data) {
+		console.log(data.target.result);
+		dv_2 = new DataView(data.target.result,0,data.target.result.byteLength);
+		
+		for(var i=76;i<data.target.result.byteLength;i++)
+		{
+			dv.setInt8(i,dv.getInt8(i)+dv_1.getInt8(i)+dv_2.getInt8(i));
+		}
+		
+		f = new Blob([dv],{type: 'audio/wav'});
+		document.getElementById("a").src = window.URL.createObjectURL(f);
+    }
+
+};
+ 
+xhr_2.send();
+
+});
+
+
 
 
 //https://stackoverflow.com/questions/19175174/capture-frames-from-video-with-html5-and-javascript
