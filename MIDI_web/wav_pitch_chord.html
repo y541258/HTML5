@@ -131,12 +131,44 @@ reader.onload = function (data) {
 		console.log(data.target.result);
 		dv_2 = new DataView(data.target.result,0,data.target.result.byteLength);
 		
-		for(var i=76;i<data.target.result.byteLength;i++)
+		var f=1.0;
+		//歸一化混音演算法,但我試的結果感覺不好
+		//可能是因為本來是針對C語言做的演算法
+		
+		//for(var i=76;i<data.target.result.byteLength;i++)
+		for(var i=76;i<17640*5;i++)
 		{
-			dv.setInt8(i,dv.getInt8(i)+dv_1.getInt8(i)+dv_2.getInt8(i));
+		    /*if (f < 1)
+			{
+				f += (1.0 - f) / 32;
+			}*/
+		
+			var temp_sig=dv.getInt8(i)+dv_1.getInt8(i)+dv_2.getInt8(i);
+			if(temp_sig*f > 255)
+			{
+				//f= 255/temp_sig;
+				dv_1.setInt8(i,255);
+				//console.log("temp"+temp_sig);
+			}
+			else if(temp_sig*f < -256)
+			{
+				//f= -256/temp_sig;
+				dv_1.setInt8(i,-256);
+			}
+			else
+			{
+				dv_1.setInt8(i,dv.getInt8(i)+dv_1.getInt8(i)+dv_2.getInt8(i));
+			}
+			
+			//dv_1.setInt8(i,dv.getInt8(i)+dv_1.getInt8(i)+dv_2.getInt8(i));
 		}
 		
-		f = new Blob([dv],{type: 'audio/wav'});
+		for(var i=17640*5;i<data.target.result.byteLength;i++)
+		{
+			dv_1.setInt8(i,0);
+		}
+		
+		f = new Blob([dv_1],{type: 'audio/wav'});
 		document.getElementById("a").src = window.URL.createObjectURL(f);
     }
 
