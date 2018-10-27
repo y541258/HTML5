@@ -15,7 +15,7 @@
 <button id="r">隨機</button>
 <button id="dis">顯示譜</button>
 <input id="note_number" value="音符數量"></input>
-<button id="save_file">存檔</button>
+<button id="save_file" disabled>存檔</button>
 
 <script src="jquery-3.3.1.js"></script>
 <script>
@@ -49,11 +49,6 @@ music_order.push("g");
 music_order.push("6");
 music_order.push("a");
 music_order.push("7");
-
-for(var i=0;i<84;i++)
-{
-	chord.push(false);
-}
 
 for(var i=0;i<music_order.length;i++)
 {
@@ -178,24 +173,19 @@ function play_music(){
  {
 	if(str[index] != 0)
 	{
-		if(str[index][0] != '-')
+		if(str[index][0] != "-")
 		{
 			document.getElementById(str[index++]).play();
 		}
 		else
 		{
+		 temp_chord.length=0;
 		 temp_chord =str[index++].split('-');
-		 
-		 for(var i=0;i<chord.length;i++)
-		 {
-			chord[i]=false;
-		 }
-		 
 		 temp_chord =temp_chord.filter(function(e){return e});
+		 
 		 for(var i=0;i<temp_chord.length;i++)
 		 {
 			document.getElementById(temp_chord[i]).play();
-			chord[music_file_name.indexOf(temp_chord[i])]=true;
 		 }
 		 
 		}
@@ -359,19 +349,161 @@ xhr[i].send();
 
 
 function load_success(){
-	var buffer = new ArrayBuffer(dv[70].byteLength);
-	target_dv = new DataView(buffer);
-	console.log(buffer.byteLength);
-	for(var i=0;i<buffer.byteLength;i++)
-	{
-		target_dv.setInt8(i,dv[70].getInt8(i));
-	}
-	f = new Blob([target_dv],{type: 'audio/wav'});
+	save_file.disabled=false;
 }
 
 save_file.addEventListener("click",download);
 
 function download() {
+	str = sheet_music.value.split(" ");
+	str =str.filter(function(e){return e});
+	
+	var time_need=0;
+	var time_value_sum=0;
+	
+	for(var i=1;i<str.length;i+=2)
+	{
+		time_value_sum += parseInt(str[i]);
+	}
+	
+	time_need=78+176400*((time_value_sum-100*str.length/2)/1000);
+	
+	var buffer = new ArrayBuffer(time_need);
+	target_dv = new DataView(buffer);
+	console.log(buffer.byteLength);
+	for(var i=0;i<78;i++)
+	{
+		target_dv.setInt8(i,dv[80].getInt8(i));
+	}
+	
+	//第三個參數寫true,代表是以Little Endian的方式儲存
+	target_dv.setInt32(4,buffer.byteLength-8,true);
+	target_dv.setInt32(74,buffer.byteLength-78,true);
+	
+	var start_pos=78;
+	var end_pos;
+	var i=1;
+	var zero_flag=false;
+	var chord_flag=false;
+	var temp_sum=0;
+	
+	while(start_pos!=buffer.byteLength)
+	{
+		zero_flag=false;
+		chord_flag=false;
+		
+		if(str[i-1][0] == '0')
+		{
+			zero_flag=true;
+		}
+		else if(str[i-1][0] == '-')
+		{
+			chord_flag=true;
+			chord.length=0;
+			temp_chord.length=0;
+			temp_chord =str[i-1].split('-');
+			temp_chord =temp_chord.filter(function(e){return e});
+			
+			for(var k=0;k<temp_chord.length;k++)
+			{
+				chord.push(music_file_name.indexOf(temp_chord[k]));
+			}
+		}
+		else
+		{
+			var temp= music_file_name.indexOf(str[i-1]);
+		}
+	
+		if(i+2 != str.length)
+		{
+			end_pos = start_pos+176400*(str[i]-100)/1000;
+
+			if(zero_flag)
+			{
+				for(var j=0;start_pos<end_pos;start_pos++,j++)
+				{
+					target_dv.setInt8(start_pos,0);
+				}
+			}
+			else if(chord_flag)
+			{
+				for(var j=0;start_pos<end_pos;start_pos++,j++)
+				{
+					temp_sum=0;
+					
+					for(var k=0;k<chord.length;k++)
+					{
+						temp_sum += dv[chord[k]].getInt8(76+j);
+					}
+					
+					if(temp_sum>255)
+					{
+						temp_sum=255;
+					}
+					else if(temp_sum<-256)
+					{
+						temp_sum=-256;
+					}
+					
+					target_dv.setInt8(start_pos,temp_sum);
+				}
+			}
+			else
+			{
+				for(var j=0;start_pos<end_pos;start_pos++,j++)
+				{
+					target_dv.setInt8(start_pos,dv[temp].getInt8(76+j));
+				}
+			}
+		}
+		else
+		{
+			end_pos = start_pos+176400*(str[i])/1000;
+
+			if(zero_flag)
+			{
+				for(var j=0;start_pos<end_pos;start_pos++,j++)
+				{
+					target_dv.setInt8(start_pos,0);
+				}
+			}
+			else if(chord_flag)
+			{
+				for(var j=0;start_pos<end_pos;start_pos++,j++)
+				{
+					temp_sum=0;
+					
+					for(var k=0;k<chord.length;k++)
+					{
+						temp_sum += dv[chord[k]].getInt8(start_pos);
+					}
+					
+					if(temp_sum>255)
+					{
+						temp_sum=255;
+					}
+					else if(temp_sum<-256)
+					{
+						temp_sum=-256;
+					}
+					
+					target_dv.setInt8(start_pos,temp_sum);
+				}
+			}
+			else
+			{
+				for(var j=0;start_pos<end_pos;start_pos++,j++)
+				{
+					target_dv.setInt8(start_pos,dv[temp].getInt8(76+j));
+				}
+			}
+		}
+		
+		i+=2;
+		console.log(start_pos);
+	}
+	f = new Blob([target_dv],{type: 'audio/wav'});
+
 	var download_link = document.createElement('a');
 	var url = window.URL.createObjectURL(f);
 	download_link.href= url;
