@@ -26,6 +26,8 @@ var sharp_music = "cdfga";
 var music_order=[];
 var music_file_name = [];
 var str;
+var temp_chord=[];
+var chord=[];
 var index=0;
 var time_value = [];
 
@@ -47,6 +49,21 @@ music_order.push("6");
 music_order.push("a");
 music_order.push("7");
 
+for(var i=0;i<84;i++)
+{
+	chord.push(false);
+}
+
+for(var i=0;i<music_order.length;i++)
+{
+	music_file_name.push(music_order[i]+"bbb");
+}
+
+for(var i=0;i<music_order.length;i++)
+{
+	music_file_name.push(music_order[i]+"bb");
+}
+
 for(var i=0;i<music_order.length;i++)
 {
 	music_file_name.push(music_order[i]+"b");
@@ -62,9 +79,19 @@ for(var i=0;i<music_order.length;i++)
 	music_file_name.push(music_order[i]+"s");
 }
 
+for(var i=0;i<music_order.length;i++)
+{
+	music_file_name.push(music_order[i]+"ss");
+}
+
+for(var i=0;i<music_order.length;i++)
+{
+	music_file_name.push(music_order[i]+"sss");
+}
+
 for(var i=0;i<music_file_name.length;i++)
 {
-	audio_element[i] = new Audio(music_file_name[i]+".mp3");
+	audio_element[i] = new Audio(music_file_name[i]+".wav");
 	audio_element[i].id=music_file_name[i];
 	document.documentElement.appendChild(audio_element[i]);
 }
@@ -72,8 +99,19 @@ for(var i=0;i<music_file_name.length;i++)
 function suddenly(){
 	if(str[index-2] != "0")
 	{
-		document.getElementById(str[index-2]).pause();
-		document.getElementById(str[index-2]).currentTime=0;
+		if(str[index-2][0] == '-')
+		{
+			for(var i=0;i<temp_chord.length;i++)
+			{
+				document.getElementById(temp_chord[i]).pause();
+				document.getElementById(temp_chord[i]).currentTime=0;
+			}
+		}
+		else
+		{
+			document.getElementById(str[index-2]).pause();
+			document.getElementById(str[index-2]).currentTime=0;
+		}
 	}
 	
 	play_music();
@@ -129,7 +167,29 @@ function play_music(){
  {
 	if(str[index] != 0)
 	{
-		document.getElementById(str[index++]).play();
+		if(str[index][0] != '-')
+		{
+			document.getElementById(str[index++]).play();
+		}
+		else
+		{
+		 temp_chord =str[index++].split('-');
+		 
+		 for(var i=0;i<chord.length;i++)
+		 {
+			chord[i]=false;
+		 }
+		 
+		 temp_chord =temp_chord.filter(function(e){return e});
+		 console.log(temp_chord.length);
+		 for(var i=0;i<temp_chord.length;i++)
+		 {
+			document.getElementById(temp_chord[i]).play();
+			chord[music_file_name.indexOf(temp_chord[i])]=true;
+			console.log(chord);
+		 }
+		 
+		}
 	}
 	else
 	{
