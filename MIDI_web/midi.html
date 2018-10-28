@@ -122,10 +122,14 @@ function cont(){
 		}
 		else
 		{
-			for(var i=0;i<temp_chord.length;i++)
-			{
-				document.getElementById(temp_chord[i]).play();
-			}
+		 temp_chord.length=0;
+		 temp_chord =str[index].split('-');
+		 temp_chord =temp_chord.filter(function(e){return e});
+		 
+		 for(var i=0;i<temp_chord.length;i++)
+		 {
+			document.getElementById(temp_chord[i]).play();
+		 }
 		}
 	}
 }
@@ -366,7 +370,7 @@ function download() {
 		time_value_sum += parseInt(str[i]);
 	}
 	
-	time_need=78+176400*((time_value_sum-100*str.length/2)/1000);
+	time_need=78+176400*(time_value_sum/1000);
 	
 	var buffer = new ArrayBuffer(time_need);
 	target_dv = new DataView(buffer);
@@ -386,6 +390,7 @@ function download() {
 	var zero_flag=false;
 	var chord_flag=false;
 	var temp_sum=0;
+	var cont_pos;
 	
 	while(start_pos!=buffer.byteLength)
 	{
@@ -414,9 +419,9 @@ function download() {
 			var temp= music_file_name.indexOf(str[i-1]);
 		}
 	
-		if(i+2 != str.length)
+		if(i == 1)
 		{
-			end_pos = start_pos+176400*(str[i]-100)/1000;
+			end_pos = start_pos+176400*(str[i]/1000);
 
 			if(zero_flag)
 			{
@@ -433,7 +438,7 @@ function download() {
 					
 					for(var k=0;k<chord.length;k++)
 					{
-						temp_sum += dv[chord[k]].getInt8(76+j);
+						temp_sum += dv[chord[k]].getInt8(78+j);
 					}
 					
 					if(temp_sum>255)
@@ -452,16 +457,17 @@ function download() {
 			{
 				for(var j=0;start_pos<end_pos;start_pos++,j++)
 				{
-					target_dv.setInt8(start_pos,dv[temp].getInt8(76+j));
+					target_dv.setInt8(start_pos,dv[temp].getInt8(78+j));
 				}
 			}
 		}
 		else
 		{
-			end_pos = start_pos+176400*(str[i])/1000;
+			end_pos = start_pos+176400*(str[i]/1000);
+			cont_pos=start_pos-176400*(100/1000);
 
 			if(zero_flag)
-			{
+			{				
 				for(var j=0;start_pos<end_pos;start_pos++,j++)
 				{
 					target_dv.setInt8(start_pos,0);
@@ -469,13 +475,37 @@ function download() {
 			}
 			else if(chord_flag)
 			{
-				for(var j=0;start_pos<end_pos;start_pos++,j++)
+				var j=0;
+				for(var j=0;cont_pos<start_pos;cont_pos++,j++)
 				{
 					temp_sum=0;
 					
 					for(var k=0;k<chord.length;k++)
 					{
-						temp_sum += dv[chord[k]].getInt8(start_pos);
+						temp_sum += dv[chord[k]].getInt8(78+j);
+					}
+					
+					temp_sum += target_dv.getInt8(cont_pos)
+					
+					if(target_dv.getInt8(cont_pos)+temp_sum>255)
+					{
+						temp_sum=255;
+					}
+					else if(target_dv.getInt8(cont_pos)+temp_sum<-256)
+					{
+						temp_sum=-256;
+					}
+					
+					target_dv.setInt8(cont_pos,target_dv.getInt8(cont_pos)+temp_sum);
+				}
+			
+				for(var j=176400*(100/1000);start_pos<end_pos;start_pos++,j++)
+				{
+					temp_sum=0;
+					
+					for(var k=0;k<chord.length;k++)
+					{
+						temp_sum += dv[chord[k]].getInt8(78+j);
 					}
 					
 					if(temp_sum>255)
@@ -492,15 +522,28 @@ function download() {
 			}
 			else
 			{
-				for(var j=0;start_pos<end_pos;start_pos++,j++)
+				for(var j=0;cont_pos<start_pos;cont_pos++,j++)
 				{
-					target_dv.setInt8(start_pos,dv[temp].getInt8(76+j));
+					var temp_sum=dv[temp].getInt8(78+j)+target_dv.getInt8(cont_pos);
+					if(temp_sum>255)
+					{
+						temp_sum=255;
+					}
+					else if(temp_sum<-256)
+					{
+						temp_sum=-256;
+					}
+					target_dv.setInt8(cont_pos,temp_sum);
+				}
+			
+				for(var j=176400*(100/1000);start_pos<end_pos;start_pos++,j++)
+				{
+					target_dv.setInt8(start_pos,dv[temp].getInt8(78+j));
 				}
 			}
 		}
 		
 		i+=2;
-		console.log(start_pos);
 	}
 	f = new Blob([target_dv],{type: 'audio/wav'});
 
