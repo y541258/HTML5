@@ -45,7 +45,7 @@ self.addEventListener('message', function(e) {
 for(var i=0;i<e.data.length;i++)
 {
 	xhr[i] = new XMLHttpRequest();
-	xhr[i].open('GET', "http://localhost/" + e.data[i]+".wav", false);
+	xhr[i].open('GET', "https://localhost/" + e.data[i]+".wav", false);
 	//第三個參數是false,採同步,也就是依照順序載入
 	xhr[i].responseType = 'arraybuffer';
 	
