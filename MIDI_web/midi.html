@@ -18,6 +18,63 @@
 <button id="save_file" disabled>存檔</button>
 
 <script src="jquery-3.3.1.js"></script>
+
+<script type='text/worker' id='worker-script'>
+
+//https://briangrinstead.com/blog/filereadersync/
+   self.addEventListener('message', function(e) { 
+        var data=e.data; 
+        try { 
+            var reader = new FileReaderSync(); 
+            postMessage({ 
+                result: reader.readAsArrayBuffer(data)
+            });
+       } catch(e){ 
+            postMessage({ 
+                result:'error'
+            }); 
+       } 
+    }, false);
+</script>
+
+
+<script type='text/worker' id='xml-script'>
+var xhr=[];
+var dv=[];
+self.addEventListener('message', function(e) { 
+for(var i=0;i<e.data.length;i++)
+{
+	xhr[i] = new XMLHttpRequest();
+	xhr[i].open('GET', "http://localhost/" + e.data[i]+".wav", false);
+	//第三個參數是false,採同步,也就是依照順序載入
+	xhr[i].responseType = 'arraybuffer';
+	
+	xhr[i].onload = function(e) {
+	// response is unsigned 8 bit integer
+		temp = new Uint8Array(this.response); 
+  
+		var file = new File([temp], "temp.wav", {
+						type: "audio/wav",
+					});
+
+var reader = new FileReader();
+
+reader.readAsArrayBuffer(file);
+reader.onload = function (data) {
+		dv.push(new DataView(data.target.result,0,data.target.result.byteLength));
+		
+		if(dv.length==84)
+		{
+			postMessage(dv);
+		}
+    }
+}
+xhr[i].send();
+}
+});
+</script>
+
+
 <script>
 //https://stackoverflow.com/questions/7686197/how-can-i-avoid-autorepeated-keydown-events-in-javascript
 //var keyAllowed = {};
@@ -314,45 +371,108 @@ document.onkeyup=function(e){
   }
 }*/
 
+function makeWorker(script) {
+    var URL = window.URL || window.webkitURL;
+    var Blob = window.Blob;
+    var Worker = window.Worker;
+    
+    if (!URL || !Blob || !Worker || !script) {
+        return null;
+    }
+    
+    var blob = new Blob([script]);
+    var worker = new Worker(URL.createObjectURL(blob));
+    return worker;
+}
+
+function processFiles(files, cb) {
+	var syncWorker = makeWorker(
+        document.getElementById('worker-script').textContent
+    );
+  
+    if (syncWorker) {
+	//console.log(syncWorker);
+        syncWorker.onmessage = function(e) {
+            cb(e.data);
+        };
+		
+		 //Array.prototype.forEach.call(files, function(file) {
+            syncWorker.postMessage(files);
+        //});
+    }
+}
+
 var temp;
-var xhr=[];
+//var xhr=[];
 var dv=[];
 var target_dv;
 var f;
 
 $(document).ready(function (){
 
+//若要在file:///底下執行,請註解這段
+
+// /*
+
+var syncWorker = makeWorker(
+        document.getElementById('xml-script').textContent
+    );
+  
+    if (syncWorker) {
+        syncWorker.onmessage = function(e) {
+            dv=e.data;
+			load_success();
+			console.log(dv);
+        };
+
+		syncWorker.postMessage(music_file_name);
+
+// */
+		
+/*
+//若要在file:///底下執行,請解除註解這段
+
 for(var i=0;i<music_file_name.length;i++)
 {
-xhr[i] = new XMLHttpRequest();
-xhr[i].open('GET', music_file_name[i]+".wav", true);
-xhr[i].responseType = 'arraybuffer';
- 
-xhr[i].onload = function(e) {
-  // response is unsigned 8 bit integer
-  temp = new Uint8Array(this.response); 
+	xhr[i] = new XMLHttpRequest();
+	xhr[i].open('GET', music_file_name[i]+".wav", false);
+	//第三個參數是false,採同步,也就是依照順序載入
+	xhr[i].responseType = 'arraybuffer';
+	
+	xhr[i].onload = function(e) {
+	// response is unsigned 8 bit integer
+		temp = new Uint8Array(this.response); 
   
-  var file = new File([temp], music_file_name[i]+".wav", {
-  type: "audio/wav",
-});
+		var file = new File([temp], "temp.wav", {
+						type: "audio/wav",
+					});
+
+
 
 var reader = new FileReader();
 
 reader.readAsArrayBuffer(file);
 reader.onload = function (data) {
-		dv.push(new DataView(data.target.result,0,data.target.result.byteLength));
+		dv.push(DataView(data.target.result,0,data.target.result.byteLength));
+		
 		if(dv.length==84)
 		{
 			load_success();
 		}
-    }
-}
-
-xhr[i].send();
+    }*/
+	/*processFiles(file, function(data) {
+		dv.push(new DataView(data.result,0,data.result.byteLength));
+		
+		if(dv.length==84)
+		{
+			load_success();
+		}
+	});*/
 }});
 
 
 function load_success(){
+	console.log("success");
 	save_file.disabled=false;
 }
 
@@ -374,7 +494,7 @@ function download() {
 	
 	var buffer = new ArrayBuffer(time_need);
 	target_dv = new DataView(buffer);
-	console.log(buffer.byteLength);
+
 	for(var i=0;i<78;i++)
 	{
 		target_dv.setInt8(i,dv[80].getInt8(i));
