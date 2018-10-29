@@ -45,8 +45,8 @@ self.addEventListener('message', function(e) {
 for(var i=0;i<e.data.length;i++)
 {
 	xhr[i] = new XMLHttpRequest();
-	//xhr[i].open('GET', "http://localhost/" + e.data[i]+".wav", false);
-	xhr[i].open('GET', "https://github.com/y541258/HTML5/blob/master/MIDI_web/" + e.data[i]+".wav", false);
+	xhr[i].open('GET', "http://localhost/" + e.data[i]+".wav", false);
+//	xhr[i].open('GET', "https://github.com/y541258/HTML5/blob/master/MIDI_web/" + e.data[i]+".wav", false);
 	//第三個參數是false,採同步,也就是依照順序載入
 	xhr[i].responseType = 'arraybuffer';
 	
@@ -404,7 +404,7 @@ function processFiles(files, cb) {
 }
 
 var temp;
-//var xhr=[];
+var xhr=[];
 var dv=[];
 var target_dv;
 var f;
@@ -413,7 +413,7 @@ $(document).ready(function (){
 
 //若要在file:///底下執行,請註解這段
 
-// /*
+/*
 
 var syncWorker = makeWorker(
         document.getElementById('xml-script').textContent
@@ -428,16 +428,19 @@ var syncWorker = makeWorker(
 
 		syncWorker.postMessage(music_file_name);
 
-// */
+ */
 		
-/*
+// /*
 //若要在file:///底下執行,請解除註解這段
 
 for(var i=0;i<music_file_name.length;i++)
 {
 	xhr[i] = new XMLHttpRequest();
-	xhr[i].open('GET', music_file_name[i]+".wav", false);
+	xhr[i].open('GET', music_file_name[i]+".wav", true);
 	//第三個參數是false,採同步,也就是依照順序載入
+	//但同步模式必須配合worker使用才有效
+	//而worker若要讀取檔案得透過http
+	//就不能在file:///底下運作了
 	xhr[i].responseType = 'arraybuffer';
 	
 	xhr[i].onload = function(e) {
@@ -450,17 +453,22 @@ for(var i=0;i<music_file_name.length;i++)
 
 
 
-var reader = new FileReader();
+		var reader = new FileReader();
 
-reader.readAsArrayBuffer(file);
-reader.onload = function (data) {
-		dv.push(DataView(data.target.result,0,data.target.result.byteLength));
+		reader.readAsArrayBuffer(file);
 		
-		if(dv.length==84)
-		{
-			load_success();
+		reader.onload = function (data) {
+			dv.push(new DataView(data.target.result,0,data.target.result.byteLength));
+		
+			if(dv.length==84)
+			{
+				load_success();
+			}
 		}
-    }*/
+	}
+	xhr[i].send();
+// */
+
 	/*processFiles(file, function(data) {
 		dv.push(new DataView(data.result,0,data.result.byteLength));
 		
