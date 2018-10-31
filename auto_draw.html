@@ -20,7 +20,14 @@ var runlength_type = null;
 var runlength_num = 1;
 var line_count=0;
 
-for (var i=0;i<imgData.data.length;i+=4)
+var point = Math.random()*imgData.data.length;
+
+if(point%4 !=0)
+{
+ point-= point%4;
+}
+
+/*for (var i=0;i<imgData.data.length;i+=4)
 {
   if(Math.random() > 0.5)
   {
@@ -29,6 +36,54 @@ for (var i=0;i<imgData.data.length;i+=4)
 	imgData.data[i+2]=0;
 	imgData.data[i+3]=255;
   }
+}*/
+
+imgData.data[point]=0;
+imgData.data[point+1]=0;
+imgData.data[point+2]=0;
+imgData.data[point+3]=255;
+
+var direction = [1,2,3,4,6,7,8,9];
+
+var next_direction;
+
+
+for(var i=0;i<20;i++)
+{
+next_direction=direction[parseInt(Math.random()*8)]
+
+switch(next_direction)
+{
+	case 1:
+		point=point+640*4-4;
+		break;
+	case 2:
+		point=point+640*4;
+		break;
+	case 3:
+		point=point+640*4+4;
+		break;
+	case 4:
+		point=point-4;
+		break;
+	case 6:
+		break;
+	case 7:
+		point=point-640*4-4;
+		break;
+	case 8:
+		point=point-640*4;
+		break;
+	case 9:
+		point=point-640*4+4;
+}
+
+imgData.data[point]=0;
+imgData.data[point+1]=0;
+imgData.data[point+2]=0;
+imgData.data[point+3]=255;
+
+console.log(next_direction);
 }
 
 ctx.putImageData(imgData,0,0,0,0,640,640);
