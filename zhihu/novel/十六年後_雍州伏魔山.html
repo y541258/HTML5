@@ -10,18 +10,20 @@
 <body>
 </body>
 <script>
-canvas_element = document.createElement("canvas");
-canvas_element.setAttribute("height",window.innerHeight);
-canvas_element.setAttribute("width",window.innerWidth);
-canvas_element.style="display:block; position:absolute; top:0px; left:0px;";
-document.documentElement.appendChild(canvas_element);
+window.onload=function(){
+	canvas_element = document.createElement("canvas");
+	canvas_element.setAttribute("height",window.innerHeight);
+	canvas_element.setAttribute("width",window.innerWidth);
+	canvas_element.style="display:block; position:absolute; top:0px; left:0px;";
+	document.documentElement.appendChild(canvas_element);
 
-var ctx = canvas_element.getContext("2d");
-ctx.fillStyle="#000000";
-ctx.fillRect(0,0,canvas_element.width,canvas_element.height);
-ctx.fillStyle="#FFFFFF";
-ctx.font="24pt 標楷體";
-var str = "十六年後，雍州伏魔山───";
-ctx.fillText(str,canvas_element.width/2-24*str.length/2,canvas_element.height/2-24/2);
+	var ctx = canvas_element.getContext("2d");
+	ctx.fillStyle="#000000";
+	ctx.fillRect(0,0,canvas_element.width,canvas_element.height);
+	ctx.fillStyle="#FFFFFF";
+	ctx.font="24pt 標楷體";
+	var str = "十六年後，雍州伏魔山───";
+	ctx.fillText(str,canvas_element.width/2-24*str.length/2,canvas_element.height/2);
+}
 </script>
 </html>
