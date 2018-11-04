@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<meta charset="utf-8"> 
+<html>
+<style>
+*{
+    margin:0;
+    padding:0;
+}
+</style>
+<body>
+</body>
+<script>
+window.onload=function(){
+	canvas_element = document.createElement("canvas");
+	canvas_element.setAttribute("height",window.innerHeight);
+	canvas_element.setAttribute("width",window.innerWidth);
+	canvas_element.style="display:block; position:absolute; top:0px; left:0px;";
+	document.documentElement.appendChild(canvas_element);
+
+	var ctx = canvas_element.getContext("2d");
+	ctx.fillStyle="black";
+	ctx.fillRect(0,0,canvas_element.width,canvas_element.height);
+	ctx.fillStyle="#FFFFFF";
+	ctx.font="24pt 標楷體";
+	var str = "十六年後，雍州伏魔山───";
+	ctx.fillText(str,canvas_element.width/2-24*str.length/2,canvas_element.height/2);
+	
+	var target_image = new Image();
+	target_image.src = "目標圖片.jpg";
+	
+	target_image.onload=function(){
+		setTimeout(call_transitions,3000);
+	};
+	
+	var timer;
+	
+	function call_transitions(){
+		timer = setInterval(transitions,40);
+	}
+	
+	function transitions()
+	{
+		var imgData=ctx.getImageData(0,0,canvas_element.width,canvas_element.height);
+		
+		for(var i=0;i<imgData.data.length;i+=4)
+		{
+			imgData.data[i+3]-=20;
+		}
+		
+		ctx.putImageData(imgData,0,0,0,0,canvas_element.width,canvas_element.height);
+		
+		if(imgData.data[3]<=0)
+		{
+			clearInterval(timer);
+			timer = setInterval(display_transitions,40);
+		}
+	}
+	
+	var alpha=0;
+	
+	function display_transitions(){
+		ctx.drawImage(target_image,canvas_element.width/2-target_image.width/2,canvas_element.height/2-target_image.height/2);
+		var imgData=ctx.getImageData(0,0,canvas_element.width,canvas_element.height);
+		
+		for(var i=0;i<imgData.data.length;i+=4)
+		{
+			imgData.data[i+3]=alpha;
+		}
+		
+		alpha+=10;
+		
+		ctx.putImageData(imgData,0,0,0,0,canvas_element.width,canvas_element.height);
+		
+		if(imgData.data[3]>=255)
+		{
+			clearInterval(timer);
+		}
+	}
+}
+</script>
+</html>
