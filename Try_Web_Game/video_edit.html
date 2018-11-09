@@ -1,69 +1,172 @@
-<!DOCTYPE>
+<!DOCTYPE html>
 <meta charset="utf-8"> 
 <html>
-<head>
-</head>
 <body>
-<script src="jquery-3.3.1.js"></script>
-<video id="v" width="320" height="240" controls autoplay></video> 
-<div id="div_test"></div>
-
-<input type="file"></input>
-<button id="save_file">存檔</button>
+<canvas id="canvas" width="500" height="200"></canvas>
+<button id="rec" disabled>record</button>
+</body>
 
 <script>
-var dv;
-var f;
-const input = document.querySelector('input')
-input.addEventListener('change', handleFiles, false);
-function handleFiles (files) { // files -> FileList 物件，裡面有 File 實例
-//	document.getElementById("v").src = window.URL.createObjectURL(result);
-	//document.getElementById("v").src = window.URL.createObjectURL(files.target.files[0]);
-  if (files.target.files[0]) {
-    const reader = new FileReader();
-	const reader1 = new FileReader();
-    reader.onload = function (data) {
-	console.log(data.target.result);
-	dv = new DataView(data.target.result,0,4444444);
-	//抓取影片檔(其實也要使用者是上傳影片檔)的前4444444 bytes
-	f = new Blob([dv],{type:'video/mp4'});
-		document.getElementById("v").src = window.URL.createObjectURL(f);
-		setInterval(test,5000);
+//this code copy from
+//https://stackoverflow.com/questions/39302814/mediastream-capture-canvas-and-audio-simultaneously
+
+var cStream,
+  aStream,
+  vid,
+  recorder,
+  analyser,
+  dataArray,
+  bufferLength,
+  chunks = [];
+
+function clickHandler() {
+
+  this.textContent = 'stop recording';
+  cStream = canvas.captureStream(30);
+  cStream.addTrack(aStream.getAudioTracks()[0]);
+
+  var mixedStream = 'MediaStream' in window ? new MediaStream([cStream.getVideoTracks()[0], aStream.getAudioTracks()[0]]) : cStream;
+  console.log(mixedStream);
+  recorder = new MediaRecorder(mixedStream);
+  recorder.start();
+
+  recorder.ondataavailable = saveChunks;
+
+  recorder.onstop = exportStream;
+
+  this.onclick = stopRecording;
+
+};
+
+function exportStream(e) {
+
+  if (chunks.length) {
+
+    var blob = new Blob(chunks)
+    var vidURL = URL.createObjectURL(blob);
+    var vid = document.createElement('video');
+    vid.controls = true;
+    vid.src = vidURL;
+    vid.onend = function() {
+      URL.revokeObjectURL(vidURL);
     }
+    document.body.insertBefore(vid, canvas);
+
+const link = document.createElement('a');
+link.style.display = 'none';
+
+const downloadUrl = window.URL.createObjectURL(blob);
+link.href = downloadUrl;
+link.download = 'media.webm';
+
+document.body.appendChild(link);
+link.click();
+link.remove();
 	
-    reader.readAsArrayBuffer(files.target.files[0]);
+  } else {
+
+    document.body.insertBefore(document.createTextNode('no data saved'), canvas);
+
   }
 }
 
+function saveChunks(e) {
 
-//https://stackoverflow.com/questions/19175174/capture-frames-from-video-with-html5-and-javascript
-function test(){
-var c = document.createElement("canvas");
-var ctx = c.getContext("2d");
-c.width = 160;
-c.height = 90;
-ctx.drawImage(v, 0, 0, 160, 90);
-div_test.appendChild(c);
+  e.data.size && chunks.push(e.data);
+
 }
 
-save_file.addEventListener("click",download);
+function stopRecording() {
 
-function download() {
-	var download_link = document.createElement('a');
-	var url = window.URL.createObjectURL(f);
-	download_link.href= url;
-    download_link.setAttribute('download', "cut.mp4");
-	
-    if (document.createEvent) {
-        var event = document.createEvent('MouseEvents');
-        event.initEvent('click', true, true);
-        download_link.dispatchEvent(event);
-    }
-    else {
-        download_link.click();
-    }
+  vid.pause();
+	this.disabled = true;
+  recorder.stop();
+
 }
+
+function initAudioStream(evt) {
+
+  var audioCtx = new AudioContext();
+  // create a stream from our AudioContext
+  var dest = audioCtx.createMediaStreamDestination();
+  aStream = dest.stream;
+  // connect our video element's output to the stream
+  var sourceNode = audioCtx.createMediaElementSource(this);
+  sourceNode.connect(dest)
+    // start the video
+  this.play();
+
+  // just for the fancy canvas drawings
+  analyser = audioCtx.createAnalyser();
+  sourceNode.connect(analyser);
+
+  analyser.fftSize = 2048;
+  bufferLength = analyser.frequencyBinCount;
+  dataArray = new Uint8Array(bufferLength);
+  analyser.getByteTimeDomainData(dataArray);
+
+  // output to our headphones
+  sourceNode.connect(audioCtx.destination)
+
+  startCanvasAnim();
+
+  rec.onclick = clickHandler;
+  rec.disabled = false;
+};
+
+var loadVideo = function() {
+
+  vid = document.createElement('video');
+  vid.crossOrigin = 'anonymous';
+  vid.oncanplay = initAudioStream;
+  vid.src = 'media.webm';
+
+  
+}
+
+function startCanvasAnim() {
+  // from MDN https://developer.mozilla.org/en/docs/Web/API/AnalyserNode#Examples
+  var canvasCtx = canvas.getContext('2d');
+
+  canvasCtx.fillStyle = 'rgb(200, 200, 200)';
+  canvasCtx.lineWidth = 2;
+  canvasCtx.strokeStyle = 'rgb(0, 0, 0)';
+
+  var draw = function() {
+
+    var drawVisual = requestAnimationFrame(draw);
+
+    analyser.getByteTimeDomainData(dataArray);
+
+    canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+    canvasCtx.beginPath();
+
+    var sliceWidth = canvas.width * 1.0 / bufferLength;
+    var x = 0;
+
+    for (var i = 0; i < bufferLength; i++) {
+
+      var v = dataArray[i] / 128.0;
+      var y = v * canvas.height / 2;
+
+      if (i === 0) {
+        canvasCtx.moveTo(x, y);
+      } else {
+        canvasCtx.lineTo(x, y);
+      }
+
+      x += sliceWidth;
+    }
+
+    canvasCtx.lineTo(canvas.width, canvas.height / 2);
+    canvasCtx.stroke();
+
+  };
+
+  draw();
+
+}
+
+loadVideo();
 </script>
-
-</body>
-</html> 
+</html>
