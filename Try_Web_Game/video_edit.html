@@ -2,7 +2,7 @@
 <meta charset="utf-8"> 
 <html>
 <body>
-<canvas id="canvas" width="500" height="200"></canvas>
+<canvas id="canvas" width="640" height="480"></canvas>
 <button id="rec" disabled>record</button>
 </body>
 
@@ -18,6 +18,8 @@ var cStream,
   dataArray,
   bufferLength,
   chunks = [];
+  
+var change_flag=false;
 
 function clickHandler() {
 
@@ -26,7 +28,6 @@ function clickHandler() {
   cStream.addTrack(aStream.getAudioTracks()[0]);
 
   var mixedStream = 'MediaStream' in window ? new MediaStream([cStream.getVideoTracks()[0], aStream.getAudioTracks()[0]]) : cStream;
-  console.log(mixedStream);
   recorder = new MediaRecorder(mixedStream);
   recorder.start();
 
@@ -79,34 +80,28 @@ function saveChunks(e) {
 function stopRecording() {
 
   vid.pause();
-	this.disabled = true;
+  vid2.pause();
+  this.disabled = true;
   recorder.stop();
 
 }
 
-function initAudioStream(evt) {
+var audioCtx= new AudioContext();
+var dest,sourceNode;
 
-  var audioCtx = new AudioContext();
+function initAudioStream(evt) {
   // create a stream from our AudioContext
-  var dest = audioCtx.createMediaStreamDestination();
+  dest = audioCtx.createMediaStreamDestination();
   aStream = dest.stream;
+  console.log(dest);
   // connect our video element's output to the stream
-  var sourceNode = audioCtx.createMediaElementSource(this);
-  sourceNode.connect(dest)
+  sourceNode = audioCtx.createMediaElementSource(this);
+  sourceNode.connect(dest);
     // start the video
   this.play();
 
-  // just for the fancy canvas drawings
-  analyser = audioCtx.createAnalyser();
-  sourceNode.connect(analyser);
-
-  analyser.fftSize = 2048;
-  bufferLength = analyser.frequencyBinCount;
-  dataArray = new Uint8Array(bufferLength);
-  analyser.getByteTimeDomainData(dataArray);
-
   // output to our headphones
-  sourceNode.connect(audioCtx.destination)
+  sourceNode.connect(audioCtx.destination);
 
   startCanvasAnim();
 
@@ -115,14 +110,36 @@ function initAudioStream(evt) {
 };
 
 var loadVideo = function() {
-
   vid = document.createElement('video');
-  vid.crossOrigin = 'anonymous';
+  //vid.crossOrigin = 'anonymous';
   vid.oncanplay = initAudioStream;
-  vid.src = 'media.webm';
-
+  vid.oncanplaythrough = function(){vid.play();};
+  vid.src = 'test.mp4';
+  //vid.src = 't.webm';
   
+  //vid.muted=true;
+  vid.currentTime=1000.5;
 }
+
+/*var loadAudio = function(){
+  aud = document.createElement('audio');
+  aud.crossOrigin = 'anonymous';
+  aud.oncanplay = initAudioStream;
+  aud.src = 'd.mp3';
+  aud.loop=true;
+  aud.play();
+}*/
+
+var loadVideo2 = function() {
+  vid2 = document.createElement('video');
+  vid.crossOrigin = 'anonymous';
+  //vid2.oncanplaythrough = function(){vid2.play();};
+  //vid.src = 'test.mp4';
+  vid2.src = 'g.mp4';
+  //vid.muted=true;
+  vid2.loop=false;
+}
+
 
 function startCanvasAnim() {
   // from MDN https://developer.mozilla.org/en/docs/Web/API/AnalyserNode#Examples
@@ -131,42 +148,46 @@ function startCanvasAnim() {
   canvasCtx.fillStyle = 'rgb(200, 200, 200)';
   canvasCtx.lineWidth = 2;
   canvasCtx.strokeStyle = 'rgb(0, 0, 0)';
-
+  
   var draw = function() {
-
-    var drawVisual = requestAnimationFrame(draw);
-
-    analyser.getByteTimeDomainData(dataArray);
-
-    canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
-    canvasCtx.beginPath();
-
-    var sliceWidth = canvas.width * 1.0 / bufferLength;
-    var x = 0;
-
-    for (var i = 0; i < bufferLength; i++) {
-
-      var v = dataArray[i] / 128.0;
-      var y = v * canvas.height / 2;
-
-      if (i === 0) {
-        canvasCtx.moveTo(x, y);
-      } else {
-        canvasCtx.lineTo(x, y);
-      }
-
-      x += sliceWidth;
-    }
-
-    canvasCtx.lineTo(canvas.width, canvas.height / 2);
-    canvasCtx.stroke();
-
-  };
+	var drawVisual = requestAnimationFrame(draw);
+	if(!change_flag)
+	{
+		canvasCtx.drawImage(vid,0,0,640,480);
+	}
+	else
+	{
+		canvasCtx.drawImage(vid2,0,0,640,480);
+	}
+	};
 
   draw();
 
 }
 
 loadVideo();
+loadVideo2();
+//loadAudio();
+
+timer_id = setInterval(check_time,100);
+
+function check_time()
+{
+	if(vid.currentTime >= 1010)
+	{
+		clearInterval(timer_id);
+		vid.pause();
+		change_flag=true;
+		
+		sourceNode.disconnect(dest);
+		sourceNode.disconnect(audioCtx.destination);
+		
+		var sourceNode2 = audioCtx.createMediaElementSource(vid2);
+		sourceNode2.connect(dest);
+		sourceNode2.connect(audioCtx.destination);
+		
+		vid2.play();
+	}
+}
 </script>
 </html>
