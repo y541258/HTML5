@@ -4,9 +4,16 @@
 <body>
 <canvas id="canvas" width="640" height="480"></canvas>
 <button id="rec" disabled>record</button>
+<button id="pause">pause</button>
 </body>
 
 <script>
+//目前firefox底下,暫停會沒辦法預覽影片
+//Chrome底下雖可正常執行,但需要在http或https底下
+//詳請可見
+//https://github.com/collab-project/videojs-record/issues/206
+
+
 //this code copy from
 //https://stackoverflow.com/questions/39302814/mediastream-capture-canvas-and-audio-simultaneously
 
@@ -42,7 +49,7 @@ function clickHandler() {
 function exportStream(e) {
 
   if (chunks.length) {
-
+console.log(chunks);
     var blob = new Blob(chunks)
     var vidURL = URL.createObjectURL(blob);
     var vid = document.createElement('video');
@@ -72,8 +79,9 @@ link.remove();
 }
 
 function saveChunks(e) {
-
-  e.data.size && chunks.push(e.data);
+  e.data.filename="blob";
+  //e.data.size && chunks.push(e.data);
+  chunks.push(e.data);
 
 }
 
@@ -93,7 +101,6 @@ function initAudioStream(evt) {
   // create a stream from our AudioContext
   dest = audioCtx.createMediaStreamDestination();
   aStream = dest.stream;
-  console.log(dest);
   // connect our video element's output to the stream
   sourceNode = audioCtx.createMediaElementSource(this);
   sourceNode.connect(dest);
@@ -176,11 +183,11 @@ function check_time()
 	if(vid.currentTime >= 1010)
 	{
 		clearInterval(timer_id);
-		vid.pause();
+		//vid.pause();
 		change_flag=true;
 		
-		sourceNode.disconnect(dest);
-		sourceNode.disconnect(audioCtx.destination);
+		//sourceNode.disconnect(dest);
+		//sourceNode.disconnect(audioCtx.destination);
 		
 		var sourceNode2 = audioCtx.createMediaElementSource(vid2);
 		sourceNode2.connect(dest);
@@ -189,5 +196,24 @@ function check_time()
 		vid2.play();
 	}
 }
+
+pause.onclick = function() {
+	recorder.pause();
+	recorder.requestData();
+	setTimeout(check,5000);
+}
+ 
+function check(){
+	var blob = new Blob(chunks);
+    var vidURL = URL.createObjectURL(blob);
+    var vid = document.createElement('video');
+    vid.controls = true;
+    vid.src = vidURL;
+    vid.onend = function() {
+      URL.revokeObjectURL(vidURL);
+    }
+    document.body.insertBefore(vid, canvas);
+}
 </script>
+
 </html>
