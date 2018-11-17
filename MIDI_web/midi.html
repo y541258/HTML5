@@ -442,6 +442,7 @@ for(var i=0;i<music_file_name.length;i++)
 	//而worker若要讀取檔案得透過http
 	//就不能在file:///底下運作了
 	xhr[i].responseType = 'arraybuffer';
+	xhr[i].mark=i;
 	
 	xhr[i].onload = function(e) {
 	// response is unsigned 8 bit integer
@@ -456,9 +457,11 @@ for(var i=0;i<music_file_name.length;i++)
 		var reader = new FileReader();
 
 		reader.readAsArrayBuffer(file);
+		reader.mark = this.mark
 		
 		reader.onload = function (data) {
-			dv.push(new DataView(data.target.result,0,data.target.result.byteLength));
+			/*dv.push(new DataView(data.target.result,0,data.target.result.byteLength));*/
+			dv[this.mark]=new DataView(data.target.result,0,data.target.result.byteLength);
 		
 			if(dv.length==84)
 			{
