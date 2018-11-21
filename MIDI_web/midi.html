@@ -16,6 +16,7 @@
 <button id="dis">顯示譜</button>
 <input id="note_number" value="音符數量"></input>
 <button id="save_file" disabled>存檔</button>
+<div id="div_display"></div>
 
 <script src="jquery-3.3.1.js"></script>
 
@@ -199,8 +200,17 @@ dis.addEventListener("click",display_sheet);
 function parse_sheet(){
   if(sheet_music.value)
   {
+	var display_time_value_sum=0;
+	  
 	str = sheet_music.value.split(" ");
 	str =str.filter(function(e){return e});
+
+	for(var i=1;i<=str.length;i+=2)
+	{
+		display_time_value_sum += parseInt(str[i]);
+	}
+	div_display.innerHTML = display_time_value_sum/1000+"秒<br>";
+	div_display.innerHTML += "音符個數" + str.length/2 + "<br>";
   }
   play_music();
 }
