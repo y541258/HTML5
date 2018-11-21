@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <meta charset="utf-8"> 
 <html>
 <head></head>
@@ -200,15 +200,29 @@ dis.addEventListener("click",display_sheet);
 function parse_sheet(){
   if(sheet_music.value)
   {
+	var display_time_value_sum=0;
+  
 	str = sheet_music.value.split(" ");
 	str =str.filter(function(e){return e});
+	for(var i=1;i<=str.length;i+=2)
+	{
+		display_time_value_sum += parseInt(str[i]);
+	}
+	
+	div_display.innerHTML = display_time_value_sum/1000+"秒<br>";
+	div_display.innerHTML += "音符個數" + str.length/2 + "<br>";
+	
 	shuffle(random_skill);
 	for(var i=0;i<str.length;i+=2)
 	{
-		div_display.innerHTML += random_skill[music_file_name.indexOf(str[i])] +" ";
-		if(i%10==8)
+		if(str[i]!="0")
 		{
-			div_display.innerHTML += "<br>";
+			div_display.innerHTML += random_skill[music_file_name.indexOf(str[i])] +" ";
+			
+			if(i%10==8)
+			{
+				div_display.innerHTML += "<br>";
+			}
 		}
 	}
   }
