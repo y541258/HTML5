@@ -1,0 +1,725 @@
+﻿<!DOCTYPE html>
+<meta charset="utf-8"> 
+<html>
+<head></head>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+}
+</style>
+
+<textarea id="sheet_music"></textarea>
+<button id="p">播放</button>
+<button id="r">隨機</button>
+<button id="dis">顯示譜</button>
+<input id="note_number" value="音符數量"></input>
+<button id="save_file" disabled>存檔</button>
+<div id="div_display"></div>
+
+<script src="jquery-3.3.1.js"></script>
+
+<script type='text/worker' id='worker-script'>
+
+//https://briangrinstead.com/blog/filereadersync/
+   self.addEventListener('message', function(e) { 
+        var data=e.data; 
+        try { 
+            var reader = new FileReaderSync(); 
+            postMessage({ 
+                result: reader.readAsArrayBuffer(data)
+            });
+       } catch(e){ 
+            postMessage({ 
+                result:'error'
+            }); 
+       } 
+    }, false);
+</script>
+
+
+<script type='text/worker' id='xml-script'>
+var xhr=[];
+var dv=[];
+self.addEventListener('message', function(e) { 
+for(var i=0;i<e.data.length;i++)
+{
+	xhr[i] = new XMLHttpRequest();
+	xhr[i].open('GET', "http://localhost/" + e.data[i]+".wav", false);
+//	xhr[i].open('GET', "https://github.com/y541258/HTML5/blob/master/MIDI_web/" + e.data[i]+".wav", false);
+	//第三個參數是false,採同步,也就是依照順序載入
+	xhr[i].responseType = 'arraybuffer';
+	
+	xhr[i].onload = function(e) {
+	// response is unsigned 8 bit integer
+		temp = new Uint8Array(this.response); 
+  
+		var file = new File([temp], "temp.wav", {
+						type: "audio/wav",
+					});
+
+var reader = new FileReader();
+
+reader.readAsArrayBuffer(file);
+reader.onload = function (data) {
+		dv.push(new DataView(data.target.result,0,data.target.result.byteLength));
+		
+		if(dv.length==84)
+		{
+			postMessage(dv);
+		}
+    }
+}
+xhr[i].send();
+}
+});
+</script>
+
+
+<script>
+//https://stackoverflow.com/questions/7686197/how-can-i-avoid-autorepeated-keydown-events-in-javascript
+//var keyAllowed = {};
+
+var audio_element = [];
+var sharp_music = "cdfga";
+var music_order=[];
+var music_file_name = [];
+var str;
+var temp_chord=[];
+var chord=[];
+var index=0;
+var time_value = [];
+
+for(var i=3;i<=16;i++)
+{
+ time_value.push(125*i);
+}
+
+music_order.push("1");
+music_order.push("c");
+music_order.push("2");
+music_order.push("d");
+music_order.push("3");
+music_order.push("4");
+music_order.push("f");
+music_order.push("5");
+music_order.push("g");
+music_order.push("6");
+music_order.push("a");
+music_order.push("7");
+
+for(var i=0;i<music_order.length;i++)
+{
+	music_file_name.push(music_order[i]+"bbb");
+}
+
+for(var i=0;i<music_order.length;i++)
+{
+	music_file_name.push(music_order[i]+"bb");
+}
+
+for(var i=0;i<music_order.length;i++)
+{
+	music_file_name.push(music_order[i]+"b");
+}
+
+for(var i=0;i<music_order.length;i++)
+{
+	music_file_name.push(music_order[i]);
+}
+
+for(var i=0;i<music_order.length;i++)
+{
+	music_file_name.push(music_order[i]+"s");
+}
+
+for(var i=0;i<music_order.length;i++)
+{
+	music_file_name.push(music_order[i]+"ss");
+}
+
+for(var i=0;i<music_order.length;i++)
+{
+	music_file_name.push(music_order[i]+"sss");
+}
+
+for(var i=0;i<music_file_name.length;i++)
+{
+	audio_element[i] = new Audio(music_file_name[i]+".wav");
+	audio_element[i].id=music_file_name[i];
+	document.documentElement.appendChild(audio_element[i]);
+}
+
+function suddenly(){
+	if(str[index-2] != "0")
+	{
+		if(str[index-2][0] == '-')
+		{
+			for(var i=0;i<temp_chord.length;i++)
+			{
+				document.getElementById(temp_chord[i]).pause();
+				document.getElementById(temp_chord[i]).currentTime=0;
+			}
+		}
+		else
+		{
+			document.getElementById(str[index-2]).pause();
+			document.getElementById(str[index-2]).currentTime=0;
+		}
+	}
+	
+	play_music();
+}
+
+function cont(){
+	if(str[index] && str[index]!="0")
+	{
+		if(str[index][0]!="-")
+		{
+			document.getElementById(str[index]).play();
+		}
+		else
+		{
+		 temp_chord.length=0;
+		 temp_chord =str[index].split('-');
+		 temp_chord =temp_chord.filter(function(e){return e});
+		 
+		 for(var i=0;i<temp_chord.length;i++)
+		 {
+			document.getElementById(temp_chord[i]).play();
+		 }
+		}
+	}
+}
+
+p.addEventListener("click",parse_sheet);
+r.addEventListener("click",random_sheet);
+dis.addEventListener("click",display_sheet);
+
+function parse_sheet(){
+  if(sheet_music.value)
+  {
+	str = sheet_music.value.split(" ");
+	str =str.filter(function(e){return e});
+	shuffle(random_skill);
+	for(var i=0;i<str.length;i+=2)
+	{
+		div_display.innerHTML += random_skill[music_file_name.indexOf(str[i])] +" ";
+		if(i%10==8)
+		{
+			div_display.innerHTML += "<br>";
+		}
+	}
+  }
+  play_music();
+}
+
+function random_sheet(){
+  if( isNaN(parseFloat(note_number.value)) || isFinite(note_number.value))
+  {
+	note_number.value=5;
+  }
+  
+  str=[];
+  
+  for(var i=0;i<note_number.value;i++)
+  {
+	str.push(music_file_name[Math.floor(Math.random() * music_file_name.length)]);
+	str.push(time_value[Math.floor(Math.random() * time_value.length)]);
+  }
+  
+  play_music();
+}
+
+function display_sheet(){
+ for(var i=0;i<str.length;i++)
+ {
+	sheet_music.value += " ";
+	sheet_music.value += str[i];
+ }
+}
+
+function play_music(){
+ if(str[index])
+ {
+	if(str[index] != 0)
+	{
+		if(str[index][0] != "-")
+		{
+			document.getElementById(str[index++]).play();
+		}
+		else
+		{
+		 temp_chord.length=0;
+		 temp_chord =str[index++].split('-');
+		 temp_chord =temp_chord.filter(function(e){return e});
+		 
+		 for(var i=0;i<temp_chord.length;i++)
+		 {
+			document.getElementById(temp_chord[i]).play();
+		 }
+		 
+		}
+	}
+	else
+	{
+		index++;
+	}
+	setTimeout(suddenly,str[index]);
+	setTimeout(cont,str[index++]-100);
+ }
+ else
+ {
+	index=0;
+ }
+}
+
+/*document.onkeydown=function(e){
+  console.log(e.keyCode);
+
+  if (keyAllowed [e.which] === false) return;
+  keyAllowed [e.which] = false;
+
+  switch(e.keyCode)
+  {
+    case 65:
+      music_C.play();
+      break;
+    case 83:
+      music_D.play();
+      break;
+    case 68:
+      music_E.play();
+      break;
+    case 70:
+      music_F.play();
+      break;
+    case 71:
+      music_G.play();
+      break;
+    case 72:
+      music_A.play();
+      break;
+    case 74:
+      music_B.play();
+      break;
+    case 75:
+      music_C_sharp.play();
+      break;
+    case 76:
+      music_D_sharp.play();
+      break;
+    case 59:
+    case 186:
+      music_E_sharp.play();
+      break;
+    case 222:
+      music_F_sharp.play();
+      break;
+    case 90:
+      music_G_sharp.play();
+      break;
+    case 88:
+      music_A_sharp.play();
+      break;
+    case 67:
+      music_B_sharp.play();
+      break;
+  }
+}
+
+document.onkeyup=function(e){
+
+  keyAllowed [e.which] = true;
+
+  switch(e.keyCode)
+  {
+    case 65:
+      music_C.pause();
+      music_C.currentTime=0;
+      break;
+    case 83:
+      music_D.pause();
+      break;
+    case 68:
+      music_E.pause();
+      break;
+    case 70:
+      music_F.pause();
+      break;
+    case 71:
+      music_G.pause();
+      break;
+    case 72:
+      music_A.pause();
+      break;
+    case 74:
+      music_B.pause();
+      break;
+    case 75:
+      music_C_sharp.pause();
+      break;
+    case 76:
+      music_D_sharp.pause();
+      break;
+    case 59:
+    case 186:
+      music_E_sharp.pause();
+      break;
+    case 222:
+      music_F_sharp.pause();
+      break;
+    case 90:
+      music_G_sharp.pause();
+      break;
+    case 88:
+      music_A_sharp.pause();
+      break;
+    case 67:
+      music_B_sharp.pause();
+      break;
+  }
+}*/
+
+function makeWorker(script) {
+    var URL = window.URL || window.webkitURL;
+    var Blob = window.Blob;
+    var Worker = window.Worker;
+    
+    if (!URL || !Blob || !Worker || !script) {
+        return null;
+    }
+    
+    var blob = new Blob([script]);
+    var worker = new Worker(URL.createObjectURL(blob));
+    return worker;
+}
+
+function processFiles(files, cb) {
+	var syncWorker = makeWorker(
+        document.getElementById('worker-script').textContent
+    );
+  
+    if (syncWorker) {
+	//console.log(syncWorker);
+        syncWorker.onmessage = function(e) {
+            cb(e.data);
+        };
+		
+		 //Array.prototype.forEach.call(files, function(file) {
+            syncWorker.postMessage(files);
+        //});
+    }
+}
+
+var temp;
+var xhr=[];
+var dv=[];
+var target_dv;
+var f;
+var random_skill=[];
+
+$(document).ready(function (){
+
+$.get("隨機技能對應表.txt",function(data){
+		random_skill=data.split("\r\n");
+	},"text");
+
+//若要在file:///底下執行,請註解這段
+
+/*
+
+var syncWorker = makeWorker(
+        document.getElementById('xml-script').textContent
+    );
+  
+    if (syncWorker) {
+        syncWorker.onmessage = function(e) {
+            dv=e.data;
+			load_success();
+			console.log(dv);
+        };
+
+		syncWorker.postMessage(music_file_name);
+
+ */
+		
+// /*
+//若要在file:///底下執行,請解除註解這段
+
+for(var i=0;i<music_file_name.length;i++)
+{
+	xhr[i] = new XMLHttpRequest();
+	xhr[i].open('GET', music_file_name[i]+".wav", true);
+	//第三個參數是false,採同步,也就是依照順序載入
+	//但同步模式必須配合worker使用才有效
+	//而worker若要讀取檔案得透過http
+	//就不能在file:///底下運作了
+	xhr[i].responseType = 'arraybuffer';
+	xhr[i].mark=i;
+	
+	xhr[i].onload = function(e) {
+	// response is unsigned 8 bit integer
+		temp = new Uint8Array(this.response); 
+  
+		var file = new File([temp], "temp.wav", {
+						type: "audio/wav",
+					});
+
+
+
+		var reader = new FileReader();
+
+		reader.readAsArrayBuffer(file);
+		reader.mark = this.mark
+		
+		reader.onload = function (data) {
+			/*dv.push(new DataView(data.target.result,0,data.target.result.byteLength));*/
+			dv[this.mark]=new DataView(data.target.result,0,data.target.result.byteLength);
+		
+			if(dv.length==84)
+			{
+				load_success();
+			}
+		}
+	}
+	xhr[i].send();
+// */
+
+	/*processFiles(file, function(data) {
+		dv.push(new DataView(data.result,0,data.result.byteLength));
+		
+		if(dv.length==84)
+		{
+			load_success();
+		}
+	});*/
+}});
+
+
+function load_success(){
+	console.log("success");
+	save_file.disabled=false;
+}
+
+save_file.addEventListener("click",download);
+
+function download() {
+	str = sheet_music.value.split(" ");
+	str =str.filter(function(e){return e});
+	
+	var time_need=0;
+	var time_value_sum=0;
+	
+	for(var i=1;i<str.length;i+=2)
+	{
+		time_value_sum += parseInt(str[i]);
+	}
+	
+	time_need=78+176400*(time_value_sum/1000);
+	
+	var buffer = new ArrayBuffer(time_need);
+	target_dv = new DataView(buffer);
+
+	for(var i=0;i<78;i++)
+	{
+		target_dv.setInt8(i,dv[80].getInt8(i));
+	}
+	
+	//第三個參數寫true,代表是以Little Endian的方式儲存
+	target_dv.setInt32(4,buffer.byteLength-8,true);
+	target_dv.setInt32(74,buffer.byteLength-78,true);
+	
+	var start_pos=78;
+	var end_pos;
+	var i=1;
+	var zero_flag=false;
+	var chord_flag=false;
+	var temp_sum=0;
+	var cont_pos;
+	
+	while(start_pos!=buffer.byteLength)
+	{
+		zero_flag=false;
+		chord_flag=false;
+		
+		if(str[i-1][0] == '0')
+		{
+			zero_flag=true;
+		}
+		else if(str[i-1][0] == '-')
+		{
+			chord_flag=true;
+			chord.length=0;
+			temp_chord.length=0;
+			temp_chord =str[i-1].split('-');
+			temp_chord =temp_chord.filter(function(e){return e});
+			
+			for(var k=0;k<temp_chord.length;k++)
+			{
+				chord.push(music_file_name.indexOf(temp_chord[k]));
+			}
+		}
+		else
+		{
+			var temp= music_file_name.indexOf(str[i-1]);
+		}
+	
+		if(i == 1)
+		{
+			end_pos = start_pos+176400*(str[i]/1000);
+
+			if(zero_flag)
+			{
+				for(var j=0;start_pos<end_pos;start_pos++,j++)
+				{
+					target_dv.setInt8(start_pos,0);
+				}
+			}
+			else if(chord_flag)
+			{
+				for(var j=0;start_pos<end_pos;start_pos++,j++)
+				{
+					temp_sum=0;
+					
+					for(var k=0;k<chord.length;k++)
+					{
+						temp_sum += dv[chord[k]].getInt8(78+j);
+					}
+					
+					if(temp_sum>255)
+					{
+						temp_sum=255;
+					}
+					else if(temp_sum<-256)
+					{
+						temp_sum=-256;
+					}
+					
+					target_dv.setInt8(start_pos,temp_sum);
+				}
+			}
+			else
+			{
+				for(var j=0;start_pos<end_pos;start_pos++,j++)
+				{
+					target_dv.setInt8(start_pos,dv[temp].getInt8(78+j));
+				}
+			}
+		}
+		else
+		{
+			end_pos = start_pos+176400*(str[i]/1000);
+			cont_pos=start_pos-176400*(100/1000);
+
+			if(zero_flag)
+			{				
+				for(var j=0;start_pos<end_pos;start_pos++,j++)
+				{
+					target_dv.setInt8(start_pos,0);
+				}
+			}
+			else if(chord_flag)
+			{
+				var j=0;
+				for(var j=0;cont_pos<start_pos;cont_pos++,j++)
+				{
+					temp_sum=0;
+					
+					for(var k=0;k<chord.length;k++)
+					{
+						temp_sum += dv[chord[k]].getInt8(78+j);
+					}
+					
+					temp_sum += target_dv.getInt8(cont_pos)
+					
+					if(target_dv.getInt8(cont_pos)+temp_sum>255)
+					{
+						temp_sum=255;
+					}
+					else if(target_dv.getInt8(cont_pos)+temp_sum<-256)
+					{
+						temp_sum=-256;
+					}
+					
+					target_dv.setInt8(cont_pos,target_dv.getInt8(cont_pos)+temp_sum);
+				}
+			
+				for(var j=176400*(100/1000);start_pos<end_pos;start_pos++,j++)
+				{
+					temp_sum=0;
+					
+					for(var k=0;k<chord.length;k++)
+					{
+						temp_sum += dv[chord[k]].getInt8(78+j);
+					}
+					
+					if(temp_sum>255)
+					{
+						temp_sum=255;
+					}
+					else if(temp_sum<-256)
+					{
+						temp_sum=-256;
+					}
+					
+					target_dv.setInt8(start_pos,temp_sum);
+				}
+			}
+			else
+			{
+				for(var j=0;cont_pos<start_pos;cont_pos++,j++)
+				{
+					var temp_sum=dv[temp].getInt8(78+j)+target_dv.getInt8(cont_pos);
+					if(temp_sum>255)
+					{
+						temp_sum=255;
+					}
+					else if(temp_sum<-256)
+					{
+						temp_sum=-256;
+					}
+					target_dv.setInt8(cont_pos,temp_sum);
+				}
+			
+				for(var j=176400*(100/1000);start_pos<end_pos;start_pos++,j++)
+				{
+					target_dv.setInt8(start_pos,dv[temp].getInt8(78+j));
+				}
+			}
+		}
+		
+		i+=2;
+	}
+	f = new Blob([target_dv],{type: 'audio/wav'});
+
+	var download_link = document.createElement('a');
+	var url = window.URL.createObjectURL(f);
+	download_link.href= url;
+    download_link.setAttribute('download', "t.wav");
+	
+    if (document.createEvent) {
+        var event = document.createEvent('MouseEvents');
+        event.initEvent('click', true, true);
+        download_link.dispatchEvent(event);
+    }
+    else {
+        download_link.click();
+    }
+}
+
+function shuffle(array) {
+  var m = array.length, t, i;
+  while (m) {
+    i = Math.floor(Math.random() * m--);
+    t = array[m];
+    array[m] = array[i];
+    array[i] = t;
+  }
+}
+</script>
+
+<body>
+</body>
+</html>
