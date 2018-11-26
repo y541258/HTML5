@@ -21,7 +21,6 @@
 <script src="jquery-3.3.1.js"></script>
 
 <script type='text/worker' id='worker-script'>
-
 //https://briangrinstead.com/blog/filereadersync/
    self.addEventListener('message', function(e) { 
         var data=e.data; 
@@ -58,9 +57,7 @@ for(var i=0;i<e.data.length;i++)
 		var file = new File([temp], "temp.wav", {
 						type: "audio/wav",
 					});
-
 var reader = new FileReader();
-
 reader.readAsArrayBuffer(file);
 reader.onload = function (data) {
 		dv.push(new DataView(data.target.result,0,data.target.result.byteLength));
@@ -79,8 +76,7 @@ xhr[i].send();
 
 <script>
 //https://stackoverflow.com/questions/7686197/how-can-i-avoid-autorepeated-keydown-events-in-javascript
-//var keyAllowed = {};
-
+var keyAllowed = {};
 var audio_element = [];
 var sharp_music = "cdfga";
 var music_order=[];
@@ -90,12 +86,10 @@ var temp_chord=[];
 var chord=[];
 var index=0;
 var time_value = [];
-
-for(var i=3;i<=16;i++)
+for(var i=3;i<=9;i++)
 {
  time_value.push(125*i);
 }
-
 music_order.push("1");
 music_order.push("c");
 music_order.push("2");
@@ -108,49 +102,40 @@ music_order.push("g");
 music_order.push("6");
 music_order.push("a");
 music_order.push("7");
-
 for(var i=0;i<music_order.length;i++)
 {
 	music_file_name.push(music_order[i]+"bbb");
 }
-
 for(var i=0;i<music_order.length;i++)
 {
 	music_file_name.push(music_order[i]+"bb");
 }
-
 for(var i=0;i<music_order.length;i++)
 {
 	music_file_name.push(music_order[i]+"b");
 }
-
 for(var i=0;i<music_order.length;i++)
 {
 	music_file_name.push(music_order[i]);
 }
-
 for(var i=0;i<music_order.length;i++)
 {
 	music_file_name.push(music_order[i]+"s");
 }
-
 for(var i=0;i<music_order.length;i++)
 {
 	music_file_name.push(music_order[i]+"ss");
 }
-
 for(var i=0;i<music_order.length;i++)
 {
 	music_file_name.push(music_order[i]+"sss");
 }
-
 for(var i=0;i<music_file_name.length;i++)
 {
 	audio_element[i] = new Audio(music_file_name[i]+".wav");
 	audio_element[i].id=music_file_name[i];
 	document.documentElement.appendChild(audio_element[i]);
 }
-
 function suddenly(){
 	if(str[index-2] != "0")
 	{
@@ -171,7 +156,6 @@ function suddenly(){
 	
 	play_music();
 }
-
 function cont(){
 	if(str[index] && str[index]!="0")
 	{
@@ -192,11 +176,9 @@ function cont(){
 		}
 	}
 }
-
 p.addEventListener("click",parse_sheet);
 r.addEventListener("click",random_sheet);
 dis.addEventListener("click",display_sheet);
-
 function parse_sheet(){
   if(sheet_music.value)
   {
@@ -204,7 +186,6 @@ function parse_sheet(){
 	  
 	str = sheet_music.value.split(" ");
 	str =str.filter(function(e){return e});
-
 	for(var i=1;i<=str.length;i+=2)
 	{
 		display_time_value_sum += parseInt(str[i]);
@@ -214,9 +195,8 @@ function parse_sheet(){
   }
   play_music();
 }
-
 function random_sheet(){
-  if( isNaN(parseFloat(note_number.value)) || isFinite(note_number.value))
+  if( isNaN(parseFloat(note_number.value)))
   {
 	note_number.value=5;
   }
@@ -225,13 +205,12 @@ function random_sheet(){
   
   for(var i=0;i<note_number.value;i++)
   {
-	str.push(music_file_name[Math.floor(Math.random() * music_file_name.length)]);
+	str.push(music_file_name[Math.floor(Math.random() * 36+24)]);
 	str.push(time_value[Math.floor(Math.random() * time_value.length)]);
   }
   
   play_music();
 }
-
 function display_sheet(){
  for(var i=0;i<str.length;i++)
  {
@@ -239,7 +218,6 @@ function display_sheet(){
 	sheet_music.value += str[i];
  }
 }
-
 function play_music(){
  if(str[index])
  {
@@ -275,8 +253,15 @@ function play_music(){
  }
 }
 
-/*document.onkeydown=function(e){
-  console.log(e.keyCode);
+
+//嫌吵的話可以註解這段
+///*
+
+var base_pitch=49;
+//第四個八度
+
+document.onkeydown=function(e){
+	//e.preventDefault();
 
   if (keyAllowed [e.which] === false) return;
   keyAllowed [e.which] = false;
@@ -284,47 +269,47 @@ function play_music(){
   switch(e.keyCode)
   {
     case 65:
-      music_C.play();
+      audio_element[base_pitch].play();
       break;
     case 83:
-      music_D.play();
+      audio_element[base_pitch+1].play();
       break;
     case 68:
-      music_E.play();
+      audio_element[base_pitch+2].play();
       break;
     case 70:
-      music_F.play();
+      audio_element[base_pitch+3].play();
       break;
     case 71:
-      music_G.play();
+      audio_element[base_pitch+4].play();
       break;
     case 72:
-      music_A.play();
+      audio_element[base_pitch+5].play();
       break;
     case 74:
-      music_B.play();
+      audio_element[base_pitch+6].play();
       break;
     case 75:
-      music_C_sharp.play();
+      audio_element[base_pitch+7].play();
       break;
     case 76:
-      music_D_sharp.play();
+      audio_element[base_pitch+8].play();
       break;
     case 59:
     case 186:
-      music_E_sharp.play();
+      audio_element[base_pitch+9].play();
       break;
     case 222:
-      music_F_sharp.play();
+      audio_element[base_pitch+10].play();
       break;
     case 90:
-      music_G_sharp.play();
+      audio_element[base_pitch+11].play();
       break;
     case 88:
-      music_A_sharp.play();
+      audio_element[base_pitch+12].play();
       break;
     case 67:
-      music_B_sharp.play();
+      audio_element[base_pitch+13].play();
       break;
   }
 }
@@ -332,55 +317,68 @@ function play_music(){
 document.onkeyup=function(e){
 
   keyAllowed [e.which] = true;
-
   switch(e.keyCode)
   {
     case 65:
-      music_C.pause();
-      music_C.currentTime=0;
+      audio_element[base_pitch].pause();
+	  audio_element[base_pitch].currentTime=0;
       break;
     case 83:
-      music_D.pause();
+      audio_element[base_pitch+1].pause();
+	  audio_element[base_pitch+1].currentTime=0;
       break;
     case 68:
-      music_E.pause();
+      audio_element[base_pitch+2].pause();
+	  audio_element[base_pitch+2].currentTime=0;
       break;
     case 70:
-      music_F.pause();
+      audio_element[base_pitch+3].pause();
+	  audio_element[base_pitch+3].currentTime=0;
       break;
     case 71:
-      music_G.pause();
+      audio_element[base_pitch+4].pause();
+	  audio_element[base_pitch+4].currentTime=0;
       break;
     case 72:
-      music_A.pause();
+      audio_element[base_pitch+5].pause();
+	  audio_element[base_pitch+5].currentTime=0;
       break;
     case 74:
-      music_B.pause();
+      audio_element[base_pitch+6].pause();
+	  audio_element[base_pitch+6].currentTime=0;
       break;
     case 75:
-      music_C_sharp.pause();
+      audio_element[base_pitch+7].pause();
+	  audio_element[base_pitch+7].currentTime=0;
       break;
     case 76:
-      music_D_sharp.pause();
+      audio_element[base_pitch+8].pause();
+	  audio_element[base_pitch+8].currentTime=0;
       break;
     case 59:
     case 186:
-      music_E_sharp.pause();
+      audio_element[base_pitch+9].pause();
+	  audio_element[base_pitch+9].currentTime=0;
       break;
     case 222:
-      music_F_sharp.pause();
+      audio_element[base_pitch+10].pause();
+	  audio_element[base_pitch+10].currentTime=0;
       break;
     case 90:
-      music_G_sharp.pause();
+      audio_element[base_pitch+11].pause();
+	  audio_element[base_pitch+11].currentTime=0;
       break;
     case 88:
-      music_A_sharp.pause();
+      audio_element[base_pitch+12].pause();
+	  audio_element[base_pitch+12].currentTime=0;
       break;
     case 67:
-      music_B_sharp.pause();
+      audio_element[base_pitch+13].pause();
+	  audio_element[base_pitch+13].currentTime=0;
       break;
   }
-}*/
+}
+//*/
 
 function makeWorker(script) {
     var URL = window.URL || window.webkitURL;
@@ -395,7 +393,6 @@ function makeWorker(script) {
     var worker = new Worker(URL.createObjectURL(blob));
     return worker;
 }
-
 function processFiles(files, cb) {
 	var syncWorker = makeWorker(
         document.getElementById('worker-script').textContent
@@ -412,19 +409,14 @@ function processFiles(files, cb) {
         //});
     }
 }
-
 var temp;
 var xhr=[];
 var dv=[];
 var target_dv;
 var f;
-
 $(document).ready(function (){
-
 //若要在file:///底下執行,請註解這段
-
 /*
-
 var syncWorker = makeWorker(
         document.getElementById('xml-script').textContent
     );
@@ -435,14 +427,11 @@ var syncWorker = makeWorker(
 			load_success();
 			console.log(dv);
         };
-
 		syncWorker.postMessage(music_file_name);
-
  */
 		
 // /*
 //若要在file:///底下執行,請解除註解這段
-
 for(var i=0;i<music_file_name.length;i++)
 {
 	xhr[i] = new XMLHttpRequest();
@@ -461,11 +450,7 @@ for(var i=0;i<music_file_name.length;i++)
 		var file = new File([temp], "temp.wav", {
 						type: "audio/wav",
 					});
-
-
-
 		var reader = new FileReader();
-
 		reader.readAsArrayBuffer(file);
 		reader.mark = this.mark
 		
@@ -481,7 +466,6 @@ for(var i=0;i<music_file_name.length;i++)
 	}
 	xhr[i].send();
 // */
-
 	/*processFiles(file, function(data) {
 		dv.push(new DataView(data.result,0,data.result.byteLength));
 		
@@ -491,15 +475,11 @@ for(var i=0;i<music_file_name.length;i++)
 		}
 	});*/
 }});
-
-
 function load_success(){
 	console.log("success");
 	save_file.disabled=false;
 }
-
 save_file.addEventListener("click",download);
-
 function download() {
 	str = sheet_music.value.split(" ");
 	str =str.filter(function(e){return e});
@@ -516,7 +496,6 @@ function download() {
 	
 	var buffer = new ArrayBuffer(time_need);
 	target_dv = new DataView(buffer);
-
 	for(var i=0;i<78;i++)
 	{
 		target_dv.setInt8(i,dv[80].getInt8(i));
@@ -564,7 +543,6 @@ function download() {
 		if(i == 1)
 		{
 			end_pos = start_pos+176400*(str[i]/1000);
-
 			if(zero_flag)
 			{
 				for(var j=0;start_pos<end_pos;start_pos++,j++)
@@ -607,7 +585,6 @@ function download() {
 		{
 			end_pos = start_pos+176400*(str[i]/1000);
 			cont_pos=start_pos-176400*(100/1000);
-
 			if(zero_flag)
 			{				
 				for(var j=0;start_pos<end_pos;start_pos++,j++)
@@ -688,7 +665,6 @@ function download() {
 		i+=2;
 	}
 	f = new Blob([target_dv],{type: 'audio/wav'});
-
 	var download_link = document.createElement('a');
 	var url = window.URL.createObjectURL(f);
 	download_link.href= url;
@@ -703,7 +679,6 @@ function download() {
         download_link.click();
     }
 }
-
 </script>
 
 <body>
