@@ -18,10 +18,10 @@
 <input id="note_number" value="音符數量"></input>
 <button id="save_file" disabled>存檔</button>
 <div>可用鍵盤輸入產生文字型樂譜,低音譜按鍵Q2W3ER5T6Y7U,高音譜按鍵VGBHNMK&lt;L&gt;:?</br>
-但目前還不支援延音型與和弦輸入,順利的話12/10前加入這功能</br>
+目前還不支援輸入和弦時的存成.wav檔功能</br>
+自11/29 18:32修改後還沒怎麼測試過,可能會有些bug在</br>
 A,S,Z,X分別切換到第1,3,5,7個八度</br>
-和弦與延音的樂譜格式是,*fs 0 1000 *7 200 400</br>
-若採用和弦與延音樂譜格式輸入播放後,到下次播放請等久一些(約7秒)</br>
+和弦與延音的樂譜格式是,d 500 *fs 0 1000 *7 200 400</br>
 純粹是個人編寫程序問題,目前還不清楚錯在哪邊</br>
 也就是 *再輸入音符 跟上個音符的間隔時間 此音符的時值</br>
 每高八度多加個s,每低八度多加個b,最多三個s跟三個b</br>
@@ -170,6 +170,12 @@ function suddenly(audio_index){
 			document.getElementById(audio_index).currentTime=0;
 			play_music();
 		}
+		else
+		{
+			audio_index = audio_index.slice(1,audio_index.length);
+			document.getElementById(audio_index).pause();
+			document.getElementById(audio_index).currentTime=0;
+		}
 	}
 }
 
@@ -239,6 +245,7 @@ function display_sheet(){
 function play_music(){
  if(str[index])
  {
+	temp_sheet=str;
 	if(str[index] != 0)
 	{
 		var temp_str;
@@ -260,8 +267,8 @@ function play_music(){
 		{
 			if(str[index][0] != '*')
 			{
-				setTimeout(cont.bind(null,str[index]),str[index-1]-100);
-				//請特別注意,這邊針對的時間是上個音符結束的提早100秒播放
+				setTimeout(cont.bind(null,str[index]),str[index-1]-20);
+				//請特別注意,這邊針對的時間是上個音符結束的提早20毫秒播放
 				//若這邊寫錯的話,除錯會很麻煩
 				//具體表現是,音樂節奏怪怪的,但找不太出問題在哪?
 			}
@@ -290,93 +297,212 @@ var base_pitch=48;
 //第四個八度
 var key_time=[];
 
+var temp_sheet="";
+
 document.onkeydown=function(e){
 	//e.preventDefault();
-	console.log(e.keyCode);
 	
-  if (keyAllowed [e.which] === false) return;
-  keyAllowed [e.which] = false;
-
+  if (keyAllowed [e.which] === true) return;
+  keyAllowed [e.which] = true;
+  
   var temp_arr;
+  var first_flag;
   
   key_time[e.which]=new Date();
+  
+  var now_time=new Date();
+  
+  var temp_time;
+  var begin_time=999999;
+  
+  for(var i=0;i<256;i++)
+  {
+	if(keyAllowed[i])
+	{
+		temp_time = now_time - key_time[i];
+		if(temp_time<begin_time && i != e.which)
+		{
+			begin_time = temp_time;
+		}
+	}
+  }
+  
+  if(begin_time==999999)
+  {
+	first_flag=true;
+  }
   
   switch(e.keyCode)
   {
 	case 81:
 		audio_element[base_pitch].play();
-		
+		if(first_flag)
+			temp_sheet += " " + music_file_name[base_pitch] + " " + music_file_name[base_pitch]+"temp";
+		else
+			temp_sheet += " *" + music_file_name[base_pitch] + " " + begin_time + " " + music_file_name[base_pitch]+"temp";
 		break;
 	case 50:
 		audio_element[base_pitch+1].play();
+		if(first_flag)
+			temp_sheet += " " + music_file_name[base_pitch+1] + " " + music_file_name[base_pitch+1]+"temp";
+		else
+			temp_sheet += " *" + music_file_name[base_pitch+1] + " " + begin_time + " " + music_file_name[base_pitch+1]+"temp";
 		break;
 	case 87:
 		audio_element[base_pitch+2].play();
+		if(first_flag)
+			temp_sheet += " " + music_file_name[base_pitch+2] + " " + music_file_name[base_pitch+2]+"temp";
+		else
+			temp_sheet += " *" + music_file_name[base_pitch+2] + " " + begin_time + " " + music_file_name[base_pitch+2]+"temp";
 		break;
 	case 51:
 		audio_element[base_pitch+3].play();
+		if(first_flag)
+			temp_sheet += " " + music_file_name[base_pitch+3] + " " + music_file_name[base_pitch+3]+"temp";
+		else
+			temp_sheet += " *" + music_file_name[base_pitch+3] + " " + begin_time + " " + music_file_name[base_pitch+3]+"temp";
 		break;
 	case 69:
 		audio_element[base_pitch+4].play();
+		if(first_flag)
+			temp_sheet += " " + music_file_name[base_pitch+4] + " " + music_file_name[base_pitch+4]+"temp";
+		else
+			temp_sheet += " *" + music_file_name[base_pitch+4] + " " + begin_time + " " + music_file_name[base_pitch+4]+"temp";
 		break;
 	case 82:
 		audio_element[base_pitch+5].play();
+		if(first_flag)
+			temp_sheet += " " + music_file_name[base_pitch+5] + " " + music_file_name[base_pitch+5]+"temp";
+		else
+			temp_sheet += " *" + music_file_name[base_pitch+5] + " " + begin_time + " " + music_file_name[base_pitch+5]+"temp";
 		break;
 	case 53:
 		audio_element[base_pitch+6].play();
+		if(first_flag)
+			temp_sheet += " " + music_file_name[base_pitch+6] + " " + music_file_name[base_pitch+6]+"temp";
+		else
+			temp_sheet += " *" + music_file_name[base_pitch+6] + " " + begin_time + " " + music_file_name[base_pitch+6]+"temp";
 		break;
 	case 84:
 		audio_element[base_pitch+7].play();
+		if(first_flag)
+			temp_sheet += " " + music_file_name[base_pitch+7] + " " + music_file_name[base_pitch+7]+"temp";
+		else
+			temp_sheet += " *" + music_file_name[base_pitch+7] + " " + begin_time + " " + music_file_name[base_pitch+7]+"temp";
 		break;
 	case 54:
 		audio_element[base_pitch+8].play();
+		if(first_flag)
+			temp_sheet += " " + music_file_name[base_pitch+8] + " " + music_file_name[base_pitch+8]+"temp";
+		else
+			temp_sheet += " *" + music_file_name[base_pitch+8] + " " + begin_time + " " + music_file_name[base_pitch+8]+"temp";
 		break;
 	case 89:
 		audio_element[base_pitch+9].play();
+		if(first_flag)
+			temp_sheet += " " + music_file_name[base_pitch+9] + " " + music_file_name[base_pitch+9]+"temp";
+		else
+			temp_sheet += " *" + music_file_name[base_pitch+9] + " " + begin_time + " " + music_file_name[base_pitch+9]+"temp";
 		break;
 	case 55:
 		audio_element[base_pitch+10].play();
+		if(first_flag)
+			temp_sheet += " " + music_file_name[base_pitch+10] + " " + music_file_name[base_pitch+10]+"temp";
+		else
+			temp_sheet += " *" + music_file_name[base_pitch+10] + " " + begin_time + " " + music_file_name[base_pitch+10]+"temp";
 		break;
 	case 85:
 		audio_element[base_pitch+11].play();
+		if(first_flag)
+			temp_sheet += " " + music_file_name[base_pitch+11] + " " + music_file_name[base_pitch+11]+"temp";
+		else
+			temp_sheet += " *" + music_file_name[base_pitch+11] + " " + begin_time + " " + music_file_name[base_pitch+11]+"temp";
 		break;
 	
 	case 86:
 		audio_element[base_pitch+12].play();
+		if(first_flag)
+			temp_sheet += " " + music_file_name[base_pitch+12] + " " + music_file_name[base_pitch+12]+"temp";
+		else
+			temp_sheet += " *" + music_file_name[base_pitch+12] + " " + begin_time + " " + music_file_name[base_pitch+12]+"temp";
 		break;
 	case 71:
 		audio_element[base_pitch+13].play();
+		if(first_flag)
+			temp_sheet += " " + music_file_name[base_pitch+13] + " " + music_file_name[base_pitch+13]+"temp";
+		else
+			temp_sheet += " *" + music_file_name[base_pitch+13] + " " + begin_time + " " + music_file_name[base_pitch+13]+"temp";
 		break;
 	case 66:
 		audio_element[base_pitch+14].play();
+		if(first_flag)
+			temp_sheet += " " + music_file_name[base_pitch+14] + " " + music_file_name[base_pitch+14]+"temp";
+		else
+			temp_sheet += " *" + music_file_name[base_pitch+14] + " " + begin_time + " " + music_file_name[base_pitch+14]+"temp";
 		break;
 	case 72:
 		audio_element[base_pitch+15].play();
+		if(first_flag)
+			temp_sheet += " " + music_file_name[base_pitch+15] + " " + music_file_name[base_pitch+15]+"temp";
+		else
+			temp_sheet += " *" + music_file_name[base_pitch+15] + " " + begin_time + " " + music_file_name[base_pitch+15]+"temp";
 		break;
 	case 78:
 		audio_element[base_pitch+16].play();
+		if(first_flag)
+			temp_sheet += " " + music_file_name[base_pitch+16] + " " + music_file_name[base_pitch+16]+"temp";
+		else
+			temp_sheet += " *" + music_file_name[base_pitch+16] + " " + begin_time + " " + music_file_name[base_pitch+16]+"temp";
 		break;
 	case 77:
 		audio_element[base_pitch+17].play();
+		if(first_flag)
+			temp_sheet += " " + music_file_name[base_pitch+17] + " " + music_file_name[base_pitch+17]+"temp";
+		else
+			temp_sheet += " *" + music_file_name[base_pitch+17] + " " + begin_time + " " + music_file_name[base_pitch+17]+"temp";
 		break;
 	case 75:
 		audio_element[base_pitch+18].play();
+		if(first_flag)
+			temp_sheet += " " + music_file_name[base_pitch+18] + " " + music_file_name[base_pitch+18]+"temp";
+		else
+			temp_sheet += " *" + music_file_name[base_pitch+18] + " " + begin_time + " " + music_file_name[base_pitch+18]+"temp";
 		break;
 	case 188:
 		audio_element[base_pitch+19].play();
+		if(first_flag)
+			temp_sheet += " " + music_file_name[base_pitch+19] + " " + music_file_name[base_pitch+19]+"temp";
+		else
+			temp_sheet += " *" + music_file_name[base_pitch+19] + " " + begin_time + " " + music_file_name[base_pitch+19]+"temp";
 		break;
 	case 76:
 		audio_element[base_pitch+20].play();
+		if(first_flag)
+			temp_sheet += " " + music_file_name[base_pitch+20] + " " + music_file_name[base_pitch+20]+"temp";
+		else
+			temp_sheet += " *" + music_file_name[base_pitch+20] + " " + begin_time + " " + music_file_name[base_pitch+20]+"temp";
 		break;
 	case 190:
 		audio_element[base_pitch+21].play();
+		if(first_flag)
+			temp_sheet += " " + music_file_name[base_pitch+21] + " " + music_file_name[base_pitch+21]+"temp";
+		else
+			temp_sheet += " *" + music_file_name[base_pitch+21] + " " + begin_time + " " + music_file_name[base_pitch+21]+"temp";
 		break;
 	case 59:
 	case 186:
 		audio_element[base_pitch+22].play();
+		if(first_flag)
+			temp_sheet += " " + music_file_name[base_pitch+22] + " " + music_file_name[base_pitch+22]+"temp";
+		else
+			temp_sheet += " *" + music_file_name[base_pitch+22] + " " + begin_time + " " + music_file_name[base_pitch+22]+"temp";
 		break;
 	case 191:
 		audio_element[base_pitch+23].play();
+		if(first_flag)
+			temp_sheet += " " + music_file_name[base_pitch+23] + " " + music_file_name[base_pitch+23]+"temp";
+		else
+			temp_sheet += " *" + music_file_name[base_pitch+23] + " " + begin_time + " " + music_file_name[base_pitch+23]+"temp";
 		break;
 	
     case 65:
@@ -397,15 +523,28 @@ document.onkeydown=function(e){
 		break;
 	case 27:
 		temp_arr = sheet_music.value.split(" ");
-		console.log(temp_arr.splice(-1,1));
+		temp_arr.splice(-1,1);
 		sheet_music.value=temp_arr.join(" ");
+		temp_sheet = sheet_music.value;
 		break;
   }
 }
 
 document.onkeyup=function(e){
+  var end_flag=true;
 
-  keyAllowed [e.which] = true;
+	console.log(end_flag);
+
+  keyAllowed [e.which] = false;
+  
+  for(var i=0;i<256;i++)
+  {
+	if(keyAllowed[i])
+	{
+		end_flag=false;
+		break;
+	}
+  }
   
   var now_time=new Date();
   
@@ -418,126 +557,175 @@ document.onkeyup=function(e){
 	case 81:
 		audio_element[base_pitch].pause();
 		audio_element[base_pitch].currentTime=0;
-		sheet_music.value += " "+music_file_name[base_pitch] + " " + diff;
+		temp_sheet = temp_sheet.replace(music_file_name[base_pitch]+"temp",diff);
+		if(end_flag)
+			sheet_music.value = temp_sheet;
 		break;
 	case 50:
 		audio_element[base_pitch+1].pause();
 		audio_element[base_pitch+1].currentTime=0;
-		sheet_music.value += " "+music_file_name[base_pitch+1] + " " + diff;
+		temp_sheet = temp_sheet.replace(music_file_name[base_pitch+1]+"temp",diff);
+		if(end_flag)
+			sheet_music.value = temp_sheet;
 		break;
 	case 87:
 		audio_element[base_pitch+2].pause();
 		audio_element[base_pitch+2].currentTime=0;
-		sheet_music.value += " "+music_file_name[base_pitch+2] + " " + diff;
+		temp_sheet = temp_sheet.replace(music_file_name[base_pitch+2]+"temp",diff);
+		if(end_flag)
+			sheet_music.value = temp_sheet;
 		break;
 	case 51:
 		audio_element[base_pitch+3].pause();
 		audio_element[base_pitch+3].currentTime=0;
-		sheet_music.value += " "+music_file_name[base_pitch+3] + " " + diff;
+		temp_sheet = temp_sheet.replace(music_file_name[base_pitch+3]+"temp",diff);
+		if(end_flag)
+			sheet_music.value = temp_sheet;
 		break;
 	case 69:
 		audio_element[base_pitch+4].pause();
 		audio_element[base_pitch+4].currentTime=0;
-		sheet_music.value += " "+music_file_name[base_pitch+4] + " " + diff;
+		temp_sheet = temp_sheet.replace(music_file_name[base_pitch+4]+"temp",diff);
+		if(end_flag)
+			sheet_music.value = temp_sheet;
 		break;
 	case 82:
 		audio_element[base_pitch+5].pause();
 		audio_element[base_pitch+5].currentTime=0;
-		sheet_music.value += " "+music_file_name[base_pitch+5] + " " + diff;
+		temp_sheet = temp_sheet.replace(music_file_name[base_pitch+5]+"temp",diff);
+		if(end_flag)
+			sheet_music.value = temp_sheet;
 		break;
 	case 53:
 		audio_element[base_pitch+6].pause();
 		audio_element[base_pitch+6].currentTime=0;
-		sheet_music.value += " "+music_file_name[base_pitch+6] + " " + diff;
+		temp_sheet = temp_sheet.replace(music_file_name[base_pitch+6]+"temp",diff);
+		if(end_flag)
+			sheet_music.value = temp_sheet;
 		break;
 	case 84:
 		audio_element[base_pitch+7].pause();
 		audio_element[base_pitch+7].currentTime=0;
-		sheet_music.value += " "+music_file_name[base_pitch+7] + " " + diff;
+		temp_sheet = temp_sheet.replace(music_file_name[base_pitch+7]+"temp",diff);
+		if(end_flag)
+			sheet_music.value = temp_sheet;
 		break;
 	case 54:
 		audio_element[base_pitch+8].pause();
 		audio_element[base_pitch+8].currentTime=0;
-		sheet_music.value += " "+music_file_name[base_pitch+8] + " " + diff;
+		temp_sheet = temp_sheet.replace(music_file_name[base_pitch+8]+"temp",diff);
+		if(end_flag)
+			sheet_music.value = temp_sheet;
 		break;
 	case 89:
 		audio_element[base_pitch+9].pause();
 		audio_element[base_pitch+9].currentTime=0;
-		sheet_music.value += " "+music_file_name[base_pitch+9] + " " + diff;
+		temp_sheet = temp_sheet.replace(music_file_name[base_pitch+9]+"temp",diff);
+		if(end_flag)
+			sheet_music.value = temp_sheet;
 		break;
 	case 55:
 		audio_element[base_pitch+10].pause();
 		audio_element[base_pitch+10].currentTime=0;
-		sheet_music.value += " "+music_file_name[base_pitch+10] + " " + diff;
+		temp_sheet = temp_sheet.replace(music_file_name[base_pitch+10]+"temp",diff);
+		if(end_flag)
+			sheet_music.value = temp_sheet;
 		break;
 	case 85:
 		audio_element[base_pitch+11].pause();
 		audio_element[base_pitch+11].currentTime=0;
-		sheet_music.value += " "+music_file_name[base_pitch+11] + " " + diff;
+		temp_sheet = temp_sheet.replace(music_file_name[base_pitch+11]+"temp",diff);
+		if(end_flag)
+			sheet_music.value = temp_sheet;
 		break;
 	
 	case 86:
 		audio_element[base_pitch+12].pause();
 		audio_element[base_pitch+12].currentTime=0;
-		sheet_music.value += " "+music_file_name[base_pitch+12] + " " + diff;
+		temp_sheet = temp_sheet.replace(music_file_name[base_pitch+12]+"temp",diff);
+		if(end_flag)
+			sheet_music.value = temp_sheet;
 		break;
 	case 71:
 		audio_element[base_pitch+13].pause();
 		audio_element[base_pitch+13].currentTime=0;
-		sheet_music.value += " "+music_file_name[base_pitch+13] + " " + diff;
+		temp_sheet = temp_sheet.replace(music_file_name[base_pitch+13]+"temp",diff);
+		if(end_flag)
+			sheet_music.value = temp_sheet;
 		break;
 	case 66:
 		audio_element[base_pitch+14].pause();
 		audio_element[base_pitch+14].currentTime=0;
-		sheet_music.value += " "+music_file_name[base_pitch+14] + " " + diff;
+		temp_sheet = temp_sheet.replace(music_file_name[base_pitch+14]+"temp",diff);
+		if(end_flag)
+			sheet_music.value = temp_sheet;
 		break;
 	case 72:
 		audio_element[base_pitch+15].pause();
 		audio_element[base_pitch+15].currentTime=0;
-		sheet_music.value += " "+music_file_name[base_pitch+15] + " " + diff;
+		temp_sheet = temp_sheet.replace(music_file_name[base_pitch+15]+"temp",diff);
+		if(end_flag)
+			sheet_music.value = temp_sheet;
 		break;
 	case 78:
 		audio_element[base_pitch+16].pause();
 		audio_element[base_pitch+16].currentTime=0;
-		sheet_music.value += " "+music_file_name[base_pitch+16] + " " + diff;
+		temp_sheet = temp_sheet.replace(music_file_name[base_pitch+16]+"temp",diff);
+		if(end_flag)
+			sheet_music.value = temp_sheet;
 		break;
 	case 77:
 		audio_element[base_pitch+17].pause();
 		audio_element[base_pitch+17].currentTime=0;
-		sheet_music.value += " "+music_file_name[base_pitch+17] + " " + diff;
+		temp_sheet = temp_sheet.replace(music_file_name[base_pitch+17]+"temp",diff);
+		if(end_flag)
+			sheet_music.value = temp_sheet;
 		break;
 	case 75:
 		audio_element[base_pitch+18].pause();
 		audio_element[base_pitch+18].currentTime=0;
-		sheet_music.value += " "+music_file_name[base_pitch+18] + " " + diff;
+		temp_sheet = temp_sheet.replace(music_file_name[base_pitch+18]+"temp",diff);
+		if(end_flag)
+			sheet_music.value = temp_sheet;
 		break;
 	case 188:
 		audio_element[base_pitch+19].pause();
 		audio_element[base_pitch+19].currentTime=0;
-		sheet_music.value += " "+music_file_name[base_pitch+19] + " " + diff;
+		temp_sheet = temp_sheet.replace(music_file_name[base_pitch+19]+"temp",diff);
+		if(end_flag)
+			sheet_music.value = temp_sheet;
 		break;
 	case 76:
 		audio_element[base_pitch+20].pause();
 		audio_element[base_pitch+20].currentTime=0;
-		sheet_music.value += " "+music_file_name[base_pitch+20] + " " + diff;
+		temp_sheet = temp_sheet.replace(music_file_name[base_pitch+20]+"temp",diff);
+		if(end_flag)
+			sheet_music.value = temp_sheet;
 		break;
 	case 190:
 		audio_element[base_pitch+21].pause();
 		audio_element[base_pitch+21].currentTime=0;
-		sheet_music.value += " "+music_file_name[base_pitch+21] + " " + diff;
+		temp_sheet = temp_sheet.replace(music_file_name[base_pitch+21]+"temp",diff);
+		if(end_flag)
+			sheet_music.value = temp_sheet;
 		break;
 	case 59:
 	case 186:
 		audio_element[base_pitch+22].pause();
 		audio_element[base_pitch+22].currentTime=0;
-		sheet_music.value += " "+music_file_name[base_pitch+22] + " " + diff;
+		temp_sheet = temp_sheet.replace(music_file_name[base_pitch+22]+"temp",diff);
+		if(end_flag)
+			sheet_music.value = temp_sheet;
 		break;
 	case 191:
 		audio_element[base_pitch+23].pause();
 		audio_element[base_pitch+23].currentTime=0;
-		sheet_music.value += " "+music_file_name[base_pitch+23] + " " + diff;
+		temp_sheet = temp_sheet.replace(music_file_name[base_pitch+23]+"temp",diff);
+		if(end_flag)
+			sheet_music.value = temp_sheet;
 		break;
   }
+  
   }
   else
   {
