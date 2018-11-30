@@ -246,7 +246,7 @@ function play_music(){
  if(str[index])
  {
 	temp_sheet=str;
-	if(str[index] != 0)
+	if(str[index] != "0")
 	{
 		var temp_str;
 		if(str[index][0] != '*') //後面僅有一個時值
@@ -280,7 +280,8 @@ function play_music(){
 	}
 	else
 	{
-		index++;
+		setTimeout(play_music,str[index+1]);
+		index+=2;
 	}
  }
  else
