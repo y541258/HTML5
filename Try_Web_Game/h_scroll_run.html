@@ -30,7 +30,6 @@ function Collision_Region(left,top,width,height)
 	var self=this;
 
 	$(canvas_element).on('collision_detect', function(e, role){	
-		console.log(jump_flag);
 		if(	self.left+self.width < role.left &&
 			//原先寫self.top > role.top+role.height)這樣太過偷懶,會導致跳不起來的問題
 			self.top == role.top+role.height)
@@ -38,12 +37,22 @@ function Collision_Region(left,top,width,height)
 			ground_flag=false;
 		}
 
-		if (self.left < role.left+role.width &&
-			self.left >= 0 &&
-				self.top+self.height > role.top+role.height &&
-				self.top < role.top+role.height) { 
-				alert("左側碰撞");
-			}
+		if(((role.left+role.width < self.left+self.width &&
+		   role.left+role.width > self.left) ||
+		   (role.left < self.left+self.width &&
+			role.left > self.left )) &&
+		   ((role.top+role.height <  self.top+self.height  &&
+		   role.top+role.height > self.top) ||
+		   (role.top <  self.top+self.height &&
+		   role.top >  self.top)
+		   ||
+		   (role.left < self.left && role.left+role.width > self.left+self.width) ||
+		   (role.top < self.top && role.top+role.height > self.top+self.height)
+		   )
+		   )
+		{
+			alert("碰撞");
+		}
 		
 		if(!ground_flag)
 		{
@@ -55,16 +64,13 @@ function Collision_Region(left,top,width,height)
 				ground_flag=false;
 			}
 		
-			if(	self.left < role.left+role.width &&
-				self.left+self.width>role.left &&
+			if(	((role.left+role.width < self.left+self.width &&
+		   role.left+role.width > self.left) ||
+		   (role.left < self.left+self.width &&
+			role.left > self.left )) &&
 				self.top == role.top+role.height){
-				//if(Math.abs(role.top+role.height - self.top) <= 10)
-					console.log("yes");
-					console.log(self.top);
 					ground_flag=true;
 					jump_height=0;
-					jump_flag=false;
-				//}
 			}
 		}
 	});
@@ -92,7 +98,7 @@ var bg_1 = new Picture(1,"background_1.jpg",0,0,3,640,480);
 var bg_2 = new Picture(2,"background_2.jpg",0,0,3,640,480);
 
 //碰撞區域需要由高度低的排到高度高的
-var collision_region_0 = new Collision_Region(0,480-15,640,15);
+var collision_region_0 = new Collision_Region(0,480-15,720,15);
 var collision_region_1 = new Collision_Region(120,480-30,200,30);
 var collision_region_2 = new Collision_Region(180,480-50,300,30);
 
@@ -117,7 +123,7 @@ function re_draw()
 		temp=bg_1;
 		bg_1=bg_2;
 		bg_2=temp;
-		collision_region_0 = new Collision_Region(0,480-15,640,15);
+		collision_region_0 = new Collision_Region(0,480-15,720,15);
 		collision_region_1 = new Collision_Region(120,480-30,200,30);
 		collision_region_2 = new Collision_Region(180,480-50,300,30);
 	}
@@ -180,6 +186,10 @@ document.addEventListener("keyup",face_jump,false);
 
 function jump(e){
   //e.preventDefault();
+  
+  console.log(jump_height);
+  console.log(jump_flag);
+  console.log(ground_flag);
   
   if(e.keyCode==32)	//空白鍵,這邊是跳躍用
   {
