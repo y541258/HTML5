@@ -3,10 +3,111 @@
 <html>
 <head>
 </head>
+<script src="jquery-3.3.1.js"></script>
 <body>
 <canvas id="canvas" width="640" height="480" ></canvas>
 <div id="div_test">test</div>
 <script>
+
+ $.getJSON("card.json",function(){
+ console.log("success");
+ })
+ .done(function(data) {
+  $.each( data, function( key, val ) {
+		/*for(var i=0;i<data.store_item.length;i++)
+		{
+			items_name.push(val[i].name);
+			items_price.push(val[i].price);
+		}*/
+	})
+ })
+ .fail(function(jqXHR, textStatus, errorThrown) { alert('getJSON request failed! ' + textStatus); }) 
+ 
+ $.getJSON("talent.json",function(){
+ console.log("success");
+ })
+ .done(function(data) {
+  $.each( data, function( key, val ) {
+		/*for(var i=0;i<data.store_item.length;i++)
+		{
+			items_name.push(val[i].name);
+			items_price.push(val[i].price);
+		}*/
+	})
+ })
+ 
+ .fail(function(jqXHR, textStatus, errorThrown) { alert('getJSON request failed! ' + textStatus); }) 
+
+  $.getJSON("achievement.json",function(){
+ console.log("success");
+ })
+ .done(function(data) {
+  $.each( data, function( key, val ) {
+		/*for(var i=0;i<data.store_item.length;i++)
+		{
+			items_name.push(val[i].name);
+			items_price.push(val[i].price);
+		}*/
+	})
+ })
+ 
+ .fail(function(jqXHR, textStatus, errorThrown) { alert('getJSON request failed! ' + textStatus); }) 
+ 
+var player_1_deck=["0000","0001","0002","1000","2000","3000","4000"];
+var player_1_battle_deck=[];
+var player_1_other=[];
+var player_1_discard=[];
+var player_1_hand=[];
+var player_talent=[];
+var player_achievement=[];
+var player_1_draw_card_number=2;
+
+var ctx = canvas.getContext("2d");
+//0 attack
+//1 mana
+//2 action
+//3 spell
+//4 equip
+
+//因為技能有 移除 或說 流放 exile
+//所以需要有個戰時獨立的卡組,來更改抽牌的狀況
+
+player_1_battle_deck=player_1_deck;
+shuffle(player_1_battle_deck);
+
+player_1_hand=player_1_battle_deck.slice(0,player_1_draw_card_number);
+console.log(player_1_hand);
+
+re_draw();
+
+function re_draw()
+{
+	ctx.fillStyle="#FFFFFF"; 
+
+	ctx.fillRect(0,0,canvas.width,canvas.height);
+
+	ctx.fillStyle="#000000";
+	ctx.font="40px 標楷體";
+	
+	for(var i=0;i<player_1_hand.length;i++)
+	{
+		ctx.fillText(player_1_hand[i],50+100*i,200);
+	}
+
+}
+
+
+function shuffle(array) {
+  var m = array.length, t, i;
+  while (m) {
+    i = Math.floor(Math.random() * m--);
+    t = array[m];
+    array[m] = array[i];
+    array[i] = t;
+  }
+}
+
+
 </script>
 </body>
 </html>
