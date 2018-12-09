@@ -8,52 +8,11 @@
 <canvas id="canvas" width="640" height="480" ></canvas>
 <div id="div_test">test</div>
 <script>
+//2018/12/16目標─改成像在打撲克牌的方式
+//也就是牌會傾斜,每出張牌碰撞偵測範圍變化
 
- $.getJSON("card.json",function(){
- console.log("success");
- })
- .done(function(data) {
-  $.each( data, function( key, val ) {
-		/*for(var i=0;i<data.store_item.length;i++)
-		{
-			items_name.push(val[i].name);
-			items_price.push(val[i].price);
-		}*/
-	})
- })
- .fail(function(jqXHR, textStatus, errorThrown) { alert('getJSON request failed! ' + textStatus); }) 
- 
- $.getJSON("talent.json",function(){
- console.log("success");
- })
- .done(function(data) {
-  $.each( data, function( key, val ) {
-		/*for(var i=0;i<data.store_item.length;i++)
-		{
-			items_name.push(val[i].name);
-			items_price.push(val[i].price);
-		}*/
-	})
- })
- 
- .fail(function(jqXHR, textStatus, errorThrown) { alert('getJSON request failed! ' + textStatus); }) 
-
-  $.getJSON("achievement.json",function(){
- console.log("success");
- })
- .done(function(data) {
-  $.each( data, function( key, val ) {
-		/*for(var i=0;i<data.store_item.length;i++)
-		{
-			items_name.push(val[i].name);
-			items_price.push(val[i].price);
-		}*/
-	})
- })
- 
- .fail(function(jqXHR, textStatus, errorThrown) { alert('getJSON request failed! ' + textStatus); }) 
- 
-var player_1_deck=["0000","0001","0002","1000","2000","3000","4000"];
+//var player_1_deck=["0000","0001","0002","1000","2000","3000","4000"];
+var player_1_deck = [];
 var player_1_battle_deck=[];
 var player_1_other=[];
 var player_1_discard=[];
@@ -61,7 +20,89 @@ var player_1_hand=[];
 var player_talent=[];
 var player_achievement=[];
 var player_1_draw_card_number=2;
+var card=[];
+var enemy=[];
+var now_enemy=[];
+var load_number=0;
+var elements=[];//碰撞偵測區域
 
+ $.getJSON("card.json",function(){ })
+ .done(function(data) {
+  $.each( data, function( key, val ) {
+		for(var i=0;i<data.card.length;i++)
+		{
+			card[val[i].id]=val[i];
+			//console.log(card[val[i].id]);
+		}
+	})
+	load_number++;
+ })
+ .fail(function(jqXHR, textStatus, errorThrown) {  }) 
+ 
+ $.getJSON("talent.json",function(){ })
+ .done(function(data) {
+  $.each( data, function( key, val ) {
+	})
+ })
+ 
+ .fail(function(jqXHR, textStatus, errorThrown) { alert('getJSON request failed! ' + textStatus); }) 
+
+  $.getJSON("achievement.json",function(){ })
+ .done(function(data) {
+  $.each( data, function( key, val ) {
+	})
+ })
+ 
+ .fail(function(jqXHR, textStatus, errorThrown) { alert('getJSON request failed! ' + textStatus); }) 
+ 
+  $.getJSON("enemy.json",function(){
+ console.log("success");
+ })
+ .done(function(data) {
+  $.each( data, function( key, val ) {
+		for(var i=0;i<data.enemy.length;i++)
+		{
+			enemy[val[i].id]=val[i];
+		}
+	})
+	now_enemy.push(enemy["0000"]);
+	load_number++;
+ })
+ 
+ .fail(function(jqXHR, textStatus, errorThrown) { alert('getJSON request failed! ' + textStatus); }) 
+
+  $.getJSON("role.json",function(){
+ })
+ .done(function(data) {
+  $.each( data, function( key, val ) {
+		for(var i=0;i<data.role.length;i++)
+		{
+			if(val[i].class=="新人")
+			{
+				player_1_deck=val[i].deck;
+				console.log(player_1_deck);
+				break;
+			}
+		}
+	})
+	load_number++;
+ })
+ 
+ .fail(function(jqXHR, textStatus, errorThrown) { alert('getJSON request failed! ' + textStatus); }) 
+
+
+var timer_id = setInterval(check_load,1000);
+
+function check_load()
+{
+	if(load_number == 3)
+	{
+		combat_init();
+		re_draw();
+		clearInterval(timer_id);
+	}
+}
+ 
 var ctx = canvas.getContext("2d");
 //0 attack
 //1 mana
@@ -72,13 +113,27 @@ var ctx = canvas.getContext("2d");
 //因為技能有 移除 或說 流放 exile
 //所以需要有個戰時獨立的卡組,來更改抽牌的狀況
 
-player_1_battle_deck=player_1_deck;
-shuffle(player_1_battle_deck);
+function combat_init()
+{
+	player_1_battle_deck=player_1_deck;
+	shuffle(player_1_battle_deck);
 
-player_1_hand=player_1_battle_deck.slice(0,player_1_draw_card_number);
-console.log(player_1_hand);
+	player_1_hand=player_1_battle_deck.slice(0,player_1_draw_card_number);
+	console.log(player_1_hand);
 
-re_draw();
+	for(var i=0;i<player_1_hand.length;i++)
+	{
+		elements.push(new click_region(i,50+200*i,200,160,90));
+	}
+}
+
+function reset_click_region()
+{
+	for(var i=0;i<player_1_hand.length;i++)
+	{
+		elements.push(new click_region(i,50+200*i,200,160,90));
+	}
+}
 
 function re_draw()
 {
@@ -89,9 +144,14 @@ function re_draw()
 	ctx.fillStyle="#000000";
 	ctx.font="40px 標楷體";
 	
+	ctx.fillText(now_enemy[0].name,400,50);
+	ctx.fillText("血量"+now_enemy[0].hp,400,90);
+	ctx.fillText("護甲"+now_enemy[0].armor,400,130);
+	
 	for(var i=0;i<player_1_hand.length;i++)
 	{
-		ctx.fillText(player_1_hand[i],50+100*i,200);
+		ctx.fillText(card[player_1_hand[i]].name,60+200*i,250);
+		ctx.strokeRect(50+200*i,200,160,90);
 	}
 
 }
@@ -106,6 +166,68 @@ function shuffle(array) {
     array[i] = t;
   }
 }
+
+function click_region(id,left,top,width,height)
+{
+	this.id=id;
+
+	var self=this;
+
+	this.left=left;
+	this.top=top;
+	this.width=width;
+	this.height=height;
+	
+	$(canvas).on('handleClick', function(e, mouse) {
+        if (self.left < mouse.x && 
+            self.left + self.width > mouse.x && 
+            self.top < mouse.y && 
+            self.top + self.height > mouse.y) {
+			alert("你打出" + card[player_1_hand[self.id]].name);
+			play_card(card[player_1_hand[self.id]]);
+        } 
+    });
+}
+
+//要思考若以後敵人不只一個的話?
+
+function play_card(played)
+{
+	console.log(played.attack);
+	if(now_enemy[0].immune == 0)
+	{
+		now_enemy[0].hp -= parseInt(played.attack - now_enemy[0].armor);
+		if(now_enemy[0].armor != 0)
+		{
+			alert("受到"+ parseInt(played.attack-now_enemy[0].armor) +"點傷害,護甲減免"+now_enemy[0].armor+"點傷害");
+		}
+	}
+	
+	
+	//https://stackoverflow.com/questions/5767325/how-do-i-remove-a-particular-element-from-an-array-in-javascript
+	//https://stackoverflow.com/questions/825112/how-to-remove-all-click-event-handlers-in-jquery
+	
+	var index = player_1_hand.indexOf(played.id);
+	$(canvas).off("handleClick");
+	elements.splice(index,1);
+	if (index > -1) {
+		player_1_hand.splice(index, 1);
+	}
+	
+	reset_click_region();
+	re_draw();
+}
+
+	
+$(canvas).on('click', function(e) { 
+	var mouse= { 
+        x: e.pageX - canvas.offsetLeft, 
+        y: e.pageY - canvas.offsetTop
+	} 
+         
+    //fire off synthetic event containing mouse coordinate info 
+    $(canvas).trigger('handleClick', [mouse]);
+ });
 
 
 </script>
