@@ -1,0 +1,69 @@
+<!DOCTYPE>
+<meta charset="utf-8"> 
+<html>
+<head>
+</head>
+<body>
+<div id="div_test"></div>
+<canvas id="canvas" width="160" height="90" ></canvas>
+<script>
+var image_number=0;
+
+function Picture(id,img)
+{
+	this.id=id;
+	this.image = new Image();
+	this.image.src=img;
+	
+	var self=this;
+	
+	this.image.onload = function(){image_number++;}
+}
+
+var card_image = new Picture(0,"test.jpg");
+ 
+var timer_id = setInterval(check_load,1000);
+
+var ctx = canvas.getContext("2d");
+
+ctx.fillText("圖片載入中",10,10);
+
+function check_load()
+{
+	if(image_number == 1)
+	{
+		re_draw();
+		clearInterval(timer_id);
+	}
+}
+
+
+function re_draw()
+{
+	ctx.clearRect(0,0,canvas.width,canvas.height);
+	//必須用clearRect,若用填色的方式,alpha值會被洗掉
+	ctx.drawImage(card_image.image,0,0,card_image.image.width,card_image.image.height);
+	//http://www.w3school.com.cn/html5/canvas_getimagedata.asp
+	var imgData = ctx.getImageData(0,0,card_image.image.width,card_image.image.height);
+	for (var i=0;i<imgData.data.length;i+=4)
+	{
+		imgData.data[i+3]=254;
+		//把透明度改成254
+	}
+	console.log(imgData.data[3]);
+	ctx.putImageData(imgData,0,0);
+	document.getElementById("div_test").innerHTML = "圖檔alpha值已轉換成254";
+	
+	const link = document.createElement('a');
+	link.style.display = 'none';
+	link.href = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
+	link.download = 'test.png';
+
+	document.body.appendChild(link);
+	link.click();
+	link.remove();
+}
+
+</script>
+</body>
+</html>
