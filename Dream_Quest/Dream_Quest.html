@@ -5,8 +5,8 @@
 </head>
 <script src="jquery-3.3.1.js"></script>
 <body>
+<div id="div_test">最後更新加入圖片旋轉:2018/12/10,目前還沒改寫好旋轉後的碰撞偵測</div>
 <canvas id="canvas" width="640" height="480" ></canvas>
-<div id="div_test">test</div>
 <script>
 //2018/12/16目標─改成像在打撲克牌的方式
 //也就是牌會傾斜,每出張牌碰撞偵測範圍變化
@@ -25,6 +25,7 @@ var enemy=[];
 var now_enemy=[];
 var load_number=0;
 var elements=[];//碰撞偵測區域
+var image_number=0;
 
  $.getJSON("card.json",function(){ })
  .done(function(data) {
@@ -90,12 +91,25 @@ var elements=[];//碰撞偵測區域
  
  .fail(function(jqXHR, textStatus, errorThrown) { alert('getJSON request failed! ' + textStatus); }) 
 
+function Picture(id,img)
+{
+	this.id=id;
+	this.image = new Image();
+	this.image.src=img;
+	
+	var self=this;
+	
+	this.image.onload = function(){image_number++;}
+}
 
+var card_image = new Picture(0,"test.jpg");
+ 
+ 
 var timer_id = setInterval(check_load,1000);
 
 function check_load()
 {
-	if(load_number == 3)
+	if(load_number == 3 && image_number == 1)
 	{
 		combat_init();
 		re_draw();
@@ -150,8 +164,10 @@ function re_draw()
 	
 	for(var i=0;i<player_1_hand.length;i++)
 	{
+		ctx.rotate(5*Math.PI/180);
+		ctx.drawImage(card_image.image,40+200*i,190,160,90);
 		ctx.fillText(card[player_1_hand[i]].name,60+200*i,250);
-		ctx.strokeRect(50+200*i,200,160,90);
+		ctx.rotate(-5*Math.PI/180);
 	}
 
 }
@@ -194,12 +210,15 @@ function click_region(id,left,top,width,height)
 function play_card(played)
 {
 	console.log(played.attack);
-	if(now_enemy[0].immune == 0)
+	if(played.attack && !played.trigger)
 	{
-		now_enemy[0].hp -= parseInt(played.attack - now_enemy[0].armor);
-		if(now_enemy[0].armor != 0)
+		if(now_enemy[0].immune == 0)
 		{
-			alert("受到"+ parseInt(played.attack-now_enemy[0].armor) +"點傷害,護甲減免"+now_enemy[0].armor+"點傷害");
+			now_enemy[0].hp -= parseInt(played.attack - now_enemy[0].armor);
+			if(now_enemy[0].armor != 0)
+			{
+				alert("受到"+ parseInt(played.attack-now_enemy[0].armor) +"點傷害,護甲減免"+now_enemy[0].armor+"點傷害");
+			}
 		}
 	}
 	
