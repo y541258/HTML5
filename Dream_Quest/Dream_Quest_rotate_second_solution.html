@@ -1,0 +1,241 @@
+<!DOCTYPE>
+<meta charset="utf-8"> 
+<html>
+<head>
+</head>
+<script src="jquery-3.3.1.js"></script>
+<body>
+<div id="div_test">2018/12/11,完成投機取巧版的旋轉碰撞偵測</div>
+<canvas id="canvas" width="640" height="480" ></canvas>
+<script>
+//2018/12/16目標─改成像在打撲克牌的方式
+//也就是牌會傾斜,每出張牌碰撞偵測範圍變化
+
+//var player_1_deck=["0000","0001","0002","1000","2000","3000","4000"];
+var player_1_deck = [];
+var player_1_battle_deck=[];
+var player_1_other=[];
+var player_1_discard=[];
+var player_1_hand=[];
+var player_talent=[];
+var player_achievement=[];
+var player_1_draw_card_number=2;
+var card=[];
+var enemy=[];
+var now_enemy=[];
+var load_number=0;
+var elements=[];//碰撞偵測區域
+var image_number=0;
+
+ $.getJSON("card.json",function(){ })
+ .done(function(data) {
+  $.each( data, function( key, val ) {
+		for(var i=0;i<data.card.length;i++)
+		{
+			card[val[i].id]=val[i];
+			//console.log(card[val[i].id]);
+		}
+	})
+	load_number++;
+ })
+ .fail(function(jqXHR, textStatus, errorThrown) {  }) 
+ 
+ $.getJSON("talent.json",function(){ })
+ .done(function(data) {
+  $.each( data, function( key, val ) {
+	})
+ })
+ 
+ .fail(function(jqXHR, textStatus, errorThrown) { alert('getJSON request failed! ' + textStatus); }) 
+
+  $.getJSON("achievement.json",function(){ })
+ .done(function(data) {
+  $.each( data, function( key, val ) {
+	})
+ })
+ 
+ .fail(function(jqXHR, textStatus, errorThrown) { alert('getJSON request failed! ' + textStatus); }) 
+ 
+  $.getJSON("enemy.json",function(){
+ console.log("success");
+ })
+ .done(function(data) {
+  $.each( data, function( key, val ) {
+		for(var i=0;i<data.enemy.length;i++)
+		{
+			enemy[val[i].id]=val[i];
+		}
+	})
+	now_enemy.push(enemy["0000"]);
+	load_number++;
+ })
+ 
+ .fail(function(jqXHR, textStatus, errorThrown) { alert('getJSON request failed! ' + textStatus); }) 
+
+  $.getJSON("role.json",function(){
+ })
+ .done(function(data) {
+  $.each( data, function( key, val ) {
+		for(var i=0;i<data.role.length;i++)
+		{
+			if(val[i].class=="新人")
+			{
+				player_1_deck=val[i].deck;
+				console.log(player_1_deck);
+				break;
+			}
+		}
+	})
+	load_number++;
+ })
+ 
+ .fail(function(jqXHR, textStatus, errorThrown) { alert('getJSON request failed! ' + textStatus); }) 
+
+function Picture(id,img)
+{
+	this.id=id;
+	this.image = new Image();
+	this.image.src=img;
+	
+	var self=this;
+	
+	this.image.onload = function(){image_number++;}
+}
+
+var card_image = new Picture(0,"test.jpg");
+ 
+ 
+var timer_id = setInterval(check_load,1000);
+
+function check_load()
+{
+	if(load_number == 3 && image_number == 1)
+	{
+		combat_init();
+		re_draw();
+		clearInterval(timer_id);
+	}
+}
+ 
+var ctx = canvas.getContext("2d");
+
+var canvas_2 = document.createElement("canvas");
+canvas_2.setAttribute("height",canvas.height);
+canvas_2.setAttribute("width",canvas.width);
+var ctx2 = canvas_2.getContext("2d");
+var imgData;
+
+function combat_init()
+{
+	player_1_battle_deck=player_1_deck;
+	shuffle(player_1_battle_deck);
+
+	player_1_hand=player_1_battle_deck.slice(0,player_1_draw_card_number);
+	console.log(player_1_hand);
+}
+
+function re_draw()
+{
+	ctx.fillStyle="#FFFFFF"; 
+
+	ctx.fillRect(0,0,canvas.width,canvas.height);
+
+	ctx.fillStyle="#000000";
+	ctx.font="40px 標楷體";
+	
+	ctx.fillText(now_enemy[0].name,400,50);
+	ctx.fillText("血量"+now_enemy[0].hp,400,90);
+	ctx.fillText("護甲"+now_enemy[0].armor,400,130);
+	
+	for(var i=0;i<player_1_hand.length;i++)
+	{
+		ctx.rotate(5*Math.PI/180);
+		ctx2.rotate(5*Math.PI/180);
+		ctx2.drawImage(card_image.image,40+200*i,190,160,90);
+		imgData = ctx2.getImageData(0,0,canvas_2.width,canvas_2.height);
+		for(var ii=0;ii<imgData.data.length;ii+=4)
+		{
+			if(imgData.data[ii+3]==255)
+			{
+				imgData.data[ii+3]=255-i-1;
+			}
+		}
+		ctx2.putImageData(imgData,0,0);
+		ctx.drawImage(card_image.image,40+200*i,190,160,90);
+		ctx.fillText(card[player_1_hand[i]].name,60+200*i,250);
+		ctx.rotate(-5*Math.PI/180);
+		ctx2.rotate(-5*Math.PI/180);
+	}
+
+}
+
+
+function shuffle(array) {
+  var m = array.length, t, i;
+  while (m) {
+    i = Math.floor(Math.random() * m--);
+    t = array[m];
+    array[m] = array[i];
+    array[i] = t;
+  }
+}
+
+$(canvas).on('handleClick', function(e, mouse) {
+        var collision_card =254-imgData.data[mouse.x*4+mouse.y*4*canvas.width+3];
+		console.log(collision_card);
+		if (collision_card != 254)
+		{
+			if(card[player_1_hand[collision_card]])
+			{
+				alert("你打出" + card[player_1_hand[collision_card]].name);
+		
+				ctx2.clearRect(0,0,canvas_2.width,canvas_2.height);
+				//或
+				//ctx2.fillStyle = "rgba(255, 255, 255, 0)";
+				//ctx2.fillRect(0,0,canvas_2.width,canvas_2.height);
+				imgData = ctx2.getImageData(0,0,canvas_2.width,canvas_2.height);
+
+				play_card(card[player_1_hand[collision_card]]);
+				re_draw();
+			}
+		}
+    });
+
+//要思考若以後敵人不只一個的話?
+
+function play_card(played)
+{
+	if(played.attack && !played.trigger)
+	{
+		if(now_enemy[0].immune == 0)
+		{
+			now_enemy[0].hp -= parseInt(played.attack - now_enemy[0].armor);
+			if(now_enemy[0].armor != 0)
+			{
+				alert("受到"+ parseInt(played.attack-now_enemy[0].armor) +"點傷害,護甲減免"+now_enemy[0].armor+"點傷害");
+			}
+		}
+	}
+	
+	var index = player_1_hand.indexOf(played.id);
+
+	if (index > -1) {
+		player_1_hand.splice(index, 1);
+	}
+}
+
+	
+$(canvas).on('click', function(e) { 
+	var mouse= { 
+        x: e.pageX - canvas.offsetLeft, 
+        y: e.pageY - canvas.offsetTop
+	} 
+         
+    //fire off synthetic event containing mouse coordinate info 
+    $(canvas).trigger('handleClick', [mouse]);
+ });
+
+
+</script>
+</body>
+</html>
