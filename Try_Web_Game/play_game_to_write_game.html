@@ -68,12 +68,27 @@ function check_load(){
 				to_say=data.split("\r\n");
 				setTimeout(say_tutorial.bind(null,0),5000);
 			},"text");
+			
+			clickHandler();
 		});
+		
+		/*editor.on("change",function(instance, changeObj){
+    ctx.font="24px 標楷體";
+	var temp=[];
+	temp=editor.getValue().split("\n");
+	for(var i=0;i<temp.length;i++)
+	{
+		ctx.fillText(temp[i],0,i*30);
+	}
+});*/
 	
 		clearInterval(check_load_id);
+		ctx.fillStyle="#FFFFFF";
+		ctx.fillRect(0,0,640,480);
 		ctx.drawImage(monkey_1.image,0,0,100,96,200,100,100,96);
 		ctx.drawImage(chat.image,0,0,304,76,300,100,304,76);
 		ctx.font="24px 標楷體";
+		ctx.fillStyle="#000000";
 		ctx.fillText("你好",325,140);
 	}
 }
@@ -81,6 +96,8 @@ function check_load(){
 function say_tutorial(line_number){
 	var pause_flag=false;
 	var temp_line=0;
+	
+	console.log(to_say.length);
 	
 	for(var i=line_number;i<to_say.length;i++)
 	{
@@ -103,8 +120,19 @@ function say_tutorial(line_number){
 			
 			editor.setValue(temp);
 			
+			ctx.fillStyle="#FFFFFF";
+			ctx.fillRect(0,0,640,480);
+			ctx.drawImage(monkey_1.image,0,0,100,96,200,100,100,96);
 			ctx.drawImage(chat.image,0,0,304,76,300,100,304,76);
+			ctx.fillStyle="#000000";
 			ctx.fillText(to_say[i][0],325,140);
+			
+			if(i==to_say.length-1)
+			{
+				setTimeout(rec_stop,4000);
+				//等最後張圖畫好,再結束錄製
+			}
+			
 			pause_flag=true;
 			}
 			else
@@ -155,6 +183,11 @@ to_see.addEventListener("click",do_something);
 recover.addEventListener("click",recover_before);
 save_file.addEventListener("click",download);
 
+function rec_stop(){
+	recorder.stop();
+	stopRecording();
+}
+
 function compute(){
 	console.log(editor.getValue());
 	//eval(editor.getValue());
@@ -189,6 +222,78 @@ function download() {
     else {
         download_link.click();
     }
+}
+
+var cStream,
+  aStream,
+  vid,
+  recorder,
+  analyser,
+  dataArray,
+  bufferLength,
+  chunks = [];
+
+function clickHandler() {
+
+  this.textContent = 'stop recording';
+  cStream = canvas_element.captureStream(30);
+  /*cStream.addTrack(aStream.getAudioTracks()[0]);
+
+  var mixedStream = 'MediaStream' in window ? new MediaStream([cStream.getVideoTracks()[0], aStream.getAudioTracks()[0]]) : cStream;
+  console.log(mixedStream);*/
+  recorder = new MediaRecorder(cStream);
+  recorder.start();
+
+  recorder.ondataavailable = saveChunks;
+
+  recorder.onstop = exportStream;
+
+};
+
+function exportStream(e) {
+
+  if (chunks.length) {
+
+    var blob = new Blob(chunks)
+    var vidURL = URL.createObjectURL(blob);
+    var vid = document.createElement('video');
+    vid.controls = true;
+    vid.src = vidURL;
+    vid.onend = function() {
+      URL.revokeObjectURL(vidURL);
+    }
+    document.body.appendChild(vid);
+
+const link = document.createElement('a');
+link.style.display = 'none';
+
+const downloadUrl = window.URL.createObjectURL(blob);
+link.href = downloadUrl;
+link.download = 'media.webm';
+
+document.body.appendChild(link);
+link.click();
+link.remove();
+	
+  } else {
+
+    alert("錄製失敗");
+
+  }
+}
+
+function saveChunks(e) {
+
+  e.data.size && chunks.push(e.data);
+
+}
+
+function stopRecording() {
+
+  vid.pause();
+	this.disabled = true;
+  recorder.stop();
+
 }
 </script>
 
