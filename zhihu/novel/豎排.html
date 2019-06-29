@@ -11,16 +11,29 @@ https://www.zhangxinxu.com/wordpress/2016/04/css-writing-mode/
 .verticle-mode {
 	font-size:22px;
 	font-family:DFKai-sb;
-	float:right;
+	float: none;
+	position: absolute;
+    top: 5%;
+    left: 70%;
     writing-mode: tb-rl;
     -webkit-writing-mode: vertical-rl;      
     writing-mode: vertical-rl;
 }
+
+/*@media print {
+ 不想讓別人印網頁的話,在這區塊設定
+ 參考資料來源
+ https://ithelp.ithome.com.tw/articles/10198913
+ 
+ 需要注意的是
+ 不管要不要給別人印
+ CSS的float語法容易導致列印區塊整個消失
+ 所以說直接設定float也是個好方法
+}*/
 </style>
 
 <body>
-
-<div class="verticle-mode">
+	<div class="verticle-mode">
 <br><br><br><br><br>
 <br><br><br><br><br>
 <br><br><br><br><br>
@@ -33,7 +46,7 @@ https://www.zhangxinxu.com/wordpress/2016/04/css-writing-mode/
 那就是遇見了兩個...。<br>
 <br><br><br><br><br>
 chinese novel 《楚留香傳奇‧借屍還魂》 第二章 進退維艱 by Gulong<br>
-</div>
+ </div>
 
 </body>
 </html>
