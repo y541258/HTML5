@@ -1,0 +1,192 @@
+<!DOCTYPE>
+<html>
+<meta charset="utf-8"> 
+<script src="jquery-3.3.1.js"></script>
+<style type="text/css">
+/*
+源碼來源
+改变CSS世界纵横规则的writing-mode属性 « 张鑫旭-鑫空间-鑫生活
+https://www.zhangxinxu.com/wordpress/2016/04/css-writing-mode/
+*/
+
+.verticle-mode {
+	font-size:22px;
+	font-family:DFKai-sb;
+	float: none;
+	position: absolute;
+    top: 5%;
+    left: 65%;
+    writing-mode: tb-rl;
+    -webkit-writing-mode: vertical-rl;      
+    writing-mode: vertical-rl;
+}
+
+/*@media print {
+ 不想讓別人印網頁的話,在這區塊設定
+ 參考資料來源
+ https://ithelp.ithome.com.tw/articles/10198913
+ 
+ 需要注意的是
+ 不管要不要給別人印
+ CSS的float語法容易導致列印區塊整個消失
+ 所以說直接設定float也是個好方法
+}*/
+</style>
+
+<body>
+	<div class="verticle-mode">
+题目:<br>
+想象下游戏《魔兽世界》、《魔兽争霸》<br>
+现在我们可最多十种族(现在种族已经到15个了，但就先这样)<br>
+联合征讨娜迦<br>
+因为地形因素，在这战场上<br>
+一次只能派三个，娜迦也只能派三个<br>
+每个娜迦部队都被我方某一个种族克<br>
+採三战两胜制,而三个人中只要有两个能赢过娜迦<br>
+届时就是我们的胜利<br>
+<br>
+敌人娜迦三部队在不清楚底细的状况下<br>
+我们在运气最差的状况下<br>
+最少要牺牲几队才能赢？<br>
+<br>
+请作答!!<br>
+<br>
+
+ </div>
+ 
+ <script>
+	var canvas = document.createElement("canvas");
+	canvas.setAttribute("width",640);
+	canvas.setAttribute("height",2550);
+	var ctx = canvas.getContext("2d");
+	
+	document.documentElement.appendChild(canvas);
+	
+	ctx.font="24px 標楷體";
+	ctx.fillText("请选择出征种族数量",100,100);
+	
+	for(var i=2;i<=10;i++)
+	{
+		ctx.fillText(i,110+20*i,200);
+	}
+	
+	/*$(canvas).on('handleClick', function(e, mouse,level) {
+			
+    });*/
+	
+		var level=-1;
+		var all_possible=[];
+		var i_axis,j_axis,k_axis;
+		var all_flag=false;
+		var count_number=0;
+	
+	$(canvas).on('click', function(e) { 
+		var mouse= { 
+			x: e.pageX - canvas.offsetLeft, 
+			y: e.pageY - canvas.offsetTop
+		}
+	
+		if (level==-1)
+		{
+			if( mouse.x>=150 &&
+				mouse.x <= 150+180 &&
+				mouse.y >= 180 &&
+				mouse.y <= 220)
+			{
+				level = parseInt((mouse.x-150)/20)+2;
+			
+			
+			ctx.clearRect(0,0,canvas.width,canvas.height);
+			
+			for(var i=0;i<level;i++)
+			{
+				all_possible[i]=[];
+				for(var j=0;j<level;j++)
+				{
+					all_possible[i][j]=[];
+					for(var k=0;k<level;k++)
+					{
+						all_possible[i][j][k]=true;
+						ctx.fillText(""+i+j+k,20+50*i,20+25*level*j+25*k);
+					}
+				}
+			}
+			}
+			//console.dir(all_possible);
+		}
+		else
+		{
+			//↓测试用
+			console.log(level);
+			console.log(mouse.x);
+			
+			i_axis=parseInt((mouse.x-20)/50);
+			j_axis=parseInt((mouse.y)/(25*level));
+			k_axis=parseInt(((mouse.y)-25*level*j_axis)/25);
+			
+			console.log("i"+i_axis);
+			console.log("j"+j_axis);
+			console.log("k"+k_axis);
+			
+			if(	i_axis >=0 && i_axis<level &&
+				j_axis >=0 && j_axis<level &&
+				k_axis >=0 && k_axis<level)
+			{
+				if(all_possible[i_axis][j_axis][k_axis])
+				{
+					count_number++;
+					for(var i=0;i<level;i++)
+					{
+						all_possible[i][j_axis][k_axis]=false;
+						all_possible[i_axis][i][k_axis]=false;
+						all_possible[i_axis][j_axis][i]=false;
+					}
+					
+					ctx.clearRect(0,0,canvas.width,canvas.height);
+					
+					for(var i=0;i<level;i++)
+					{
+						for(var j=0;j<level;j++)
+						{
+							for(var k=0;k<level;k++)
+							{
+								all_flag = all_flag | all_possible[i][j][k];
+				
+								if(all_possible[i][j][k])
+								{
+									ctx.fillText(""+i+j+k,20+50*i,20+25*level*j+25*k);
+								}
+								else
+								{
+									ctx.fillText((""+i+j+k),20+50*i,20+25*level*j+25*k);
+									var text = ctx.measureText("ijk"); 
+									//这是偷懒写法
+									//参考资料
+									//https://stackoverflow.com/questions/4627133/is-it-possible-to-draw-text-decoration-underline-etc-with-html5-canvas-text
+									ctx.fillRect(20+50*i,20+25*level*j+25*k-10, text.width, 2);
+									//注意这个-10,差不多是减字体大小的一半才是中间删除线
+								}
+							}
+						}
+					}
+					
+					if(all_flag)
+					{
+						$(".verticle-mode").append("已选种族数量"+count_number+"   是"+i_axis+j_axis+k_axis+"<br>");
+						all_flag=false;
+					}
+					else
+					{
+						$(".verticle-mode").append("已选种族数量"+count_number+"   是"+i_axis+j_axis+k_axis+"<br>");
+						$(".verticle-mode").append("挑战完成,若牺牲"+count_number+"个队伍就能必胜娜迦<br>");
+					}
+				}
+			}
+			
+			
+		}
+ });
+ </script>
+
+</body>
+</html>
