@@ -17,6 +17,7 @@
 <button id="dis">顯示譜</button>
 <input id="note_number" value="音符數量"></input>
 <button id="save_file" disabled>存檔</button>
+<button id="reverse_file" disabled>逆播</button>
 <div>可用鍵盤輸入產生文字型樂譜,低音譜按鍵Q2W3ER5T6Y7U,高音譜按鍵VGBHNMK&lt;L&gt;:?</br>
 目前還不支援輸入和弦時的存成.wav檔功能</br>
 自11/29 18:32修改後還沒怎麼測試過,可能會有些bug在</br>
@@ -303,6 +304,8 @@ var temp_sheet="";
 document.onkeydown=function(e){
 	//e.preventDefault();
 	
+	console.log(e.keyCode);
+	
   if (keyAllowed [e.which] === true) return;
   keyAllowed [e.which] = true;
   
@@ -499,6 +502,7 @@ document.onkeydown=function(e){
 			temp_sheet += " *" + music_file_name[base_pitch+22] + " " + begin_time + " " + music_file_name[base_pitch+22]+"temp";
 		break;
 	case 191:
+		e.preventDefault();
 		audio_element[base_pitch+23].play();
 		if(first_flag)
 			temp_sheet += " " + music_file_name[base_pitch+23] + " " + music_file_name[base_pitch+23]+"temp";
@@ -533,8 +537,6 @@ document.onkeydown=function(e){
 
 document.onkeyup=function(e){
   var end_flag=true;
-
-	console.log(end_flag);
 
   keyAllowed [e.which] = false;
   
@@ -937,16 +939,21 @@ for(var i=0;i<music_file_name.length;i++)
 function load_success(){
 	console.log("success");
 	save_file.disabled=false;
+	reverse_file.disabled=false;
 }
 
-save_file.addEventListener("click",download);
+save_file.addEventListener("click",save);
+reverse_file.addEventListener("click",reverse_save);
 
-function download() {
+function download(s) {
 	str = sheet_music.value.split(" ");
 	str =str.filter(function(e){return e});
 	
 	var time_need=0;
 	var time_value_sum=0;
+	
+	//测试逆序播放
+	//7 500 6 500 5 500 f 500 5 500 6 500 f 500
 	
 	for(var i=1;i<str.length;i+=2)
 	{
@@ -956,15 +963,22 @@ function download() {
 	time_need=78+176400*(time_value_sum/1000);
 	
 	var buffer = new ArrayBuffer(time_need);
+	var r_buffer = new ArrayBuffer(time_need);
+	//逆序
+	var r_buffer = new ArrayBuffer(time_need);
 	target_dv = new DataView(buffer);
+	var r_target_dv = new DataView(r_buffer);
 	for(var i=0;i<78;i++)
 	{
 		target_dv.setInt8(i,dv[80].getInt8(i));
+		r_target_dv.setInt8(i,dv[80].getInt8(i));
 	}
 	
 	//第三個參數寫true,代表是以Little Endian的方式儲存
 	target_dv.setInt32(4,buffer.byteLength-8,true);
 	target_dv.setInt32(74,buffer.byteLength-78,true);
+	r_target_dv.setInt32(4,buffer.byteLength-8,true);
+	r_target_dv.setInt32(74,buffer.byteLength-78,true);
 	
 	var start_pos=78;
 	var end_pos;
@@ -1125,7 +1139,24 @@ function download() {
 		
 		i+=2;
 	}
-	f = new Blob([target_dv],{type: 'audio/wav'});
+	
+	start_pos=78;
+	end_pos=0;
+	
+	for(var y=0;start_pos<target_dv.byteLength;y++,start_pos++)
+	{	
+		r_target_dv.setInt8(start_pos,target_dv.getInt8(target_dv.byteLength-(y+78)));
+	}
+	
+	if(s == "save")
+	{
+		f = new Blob([target_dv],{type: 'audio/wav'});
+	}
+	else
+	{
+		f = new Blob([r_target_dv],{type: 'audio/wav'});
+	}
+	
 	var download_link = document.createElement('a');
 	var url = window.URL.createObjectURL(f);
 	download_link.href= url;
@@ -1139,6 +1170,14 @@ function download() {
     else {
         download_link.click();
     }
+}
+
+function save() {
+	download("save");
+}
+
+function reverse_save() {
+	download("reverse_save");
 }
 </script>
 
