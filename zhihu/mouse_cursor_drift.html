@@ -1,0 +1,56 @@
+<!DOCTYPE>
+<html>
+<meta charset="utf-8"> 
+<script src="jquery-3.3.1.js"></script>
+<body>
+ 
+ <script>
+	var canvas = document.createElement("canvas");
+	canvas.setAttribute("width",640);
+	canvas.setAttribute("height",2550);
+	
+	canvas.style.cursor="none";
+	//这其实就是利用CSS语法调整滑鼠光标的另一种写法
+	
+	var ctx = canvas.getContext("2d");
+	var image_number=0;
+	
+	function Picture(id,img)
+{
+	this.id=id;
+	this.image = new Image();
+	this.image.src=img;
+	
+	var self=this;
+	
+	this.image.onload = function(){image_number++;}
+}
+
+	canvas.onmousemove = function(e){
+		reset_view();
+		ctx.drawImage(card_image.image,e.pageX,e.pageY,32,32);
+	}
+
+	var card_image = new Picture(0,"Haruto Fuwa.cur");
+	//经测试后,至少firefox是支援.cur图檔格式的
+	//var card_image = new Picture(0,"Makegirlsmoe.png");
+	
+	document.documentElement.appendChild(canvas);
+	
+	var timer_id = setInterval(check_load,1000);
+
+function check_load()
+{
+	if(image_number == 1)
+	{
+		clearInterval(timer_id);
+	}
+}
+ 
+ function reset_view(){
+	ctx.clearRect(0,0,canvas.width,canvas.height);
+ }
+ </script>
+
+</body>
+</html>
