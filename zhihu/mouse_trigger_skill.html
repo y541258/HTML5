@@ -1,0 +1,155 @@
+<!DOCTYPE>
+<html>
+<meta charset="utf-8"> 
+<head>
+<script src="jquery-3.3.1.js"></script>
+</head>
+<body>
+ 
+ <script>
+ 
+ //鼠标移动程序,目前感觉纯用mousemove
+ //确实可能会有些事件没执行完就跳去执行新的mousemove
+ //要转成mouseover之类的进行初步改良
+ 
+	var canvas_element = document.createElement("canvas");
+	//canvas.setAttribute("width",640);
+	canvas_element.setAttribute("width",800);
+	//canvas.setAttribute("height",2550);
+	canvas_element.setAttribute("height",600);
+	
+	canvas_element.style.cursor="none";
+	//这其实就是利用CSS语法调整滑鼠光标的另一种写法
+	
+	document.documentElement.appendChild(canvas_element);
+	
+	var ctx = canvas_element.getContext("2d");
+	/*var image_number=0;
+	
+	function Picture(id,img)
+{
+	this.id=id;
+	this.image = new Image();
+	this.image.src=img;
+	
+	var self=this;
+	
+	this.image.onload = function(){image_number++;}
+}
+
+	canvas.onmousemove = function(e){
+		reset_view();
+		ctx.drawImage(card_image.image,e.pageX,e.pageY,32,32);
+	}
+
+	var card_image = new Picture(0,"Haruto Fuwa.cur");
+	//经测试后,至少firefox是支援.cur图檔格式的
+	//var card_image = new Picture(0,"Makegirlsmoe.png");
+	
+	document.documentElement.appendChild(canvas);
+	
+	var timer_id = setInterval(check_load,1000);
+
+function check_load()
+{
+	if(image_number == 1)
+	{
+		clearInterval(timer_id);
+	}
+}
+ 
+ function reset_view(){
+	ctx.clearRect(0,0,canvas.width,canvas.height);
+ }*/
+ ctx.fillStyle="#FFFFFF";
+ ctx.fillRect(0, 0, 800, 600);
+
+/*function temp_design(id,img,left,top,zIndex,width,height)
+{
+	this.id=id;
+	this.image = new Image();
+	this.image.src=img;
+	
+	var self=this;
+	
+	this.image.onload = function(){self.draw_flag=true;}
+	this.left= left;
+	this.top= top;
+	this.zIndex = zIndex; 
+	this.width=width;
+	this.height=height;
+	this.draw_flag = false;
+	
+	$(canvas_element).on('handleClick', function(e, mouse) { 
+
+        if (self.left < mouse.x && 
+            self.left + self.width > mouse.x && 
+            self.top < mouse.y && 
+            self.top + self.height > mouse.y) { 
+			
+			disappear(self);
+        } 
+    });
+}
+//********************************************************************
+
+
+var test_1 = new temp_design("第1個","fox.jpg",0,600-20-204,3,180,204);
+
+var elements = [];
+	
+// Add element.
+elements.push(test_1);*/
+
+
+var timer = setInterval(re_draw,50);
+var tempX;
+var tempY;
+
+document.addEventListener("click",m_click,false);
+document.addEventListener("mousemove",m_move,false);
+
+function re_draw()
+{
+	for(var i=0;i<canvas_element.height/cell_width;i++)
+	{
+		for(var j=0;j<canvas_element.width/cell_width;j++)
+		{
+			if(pixel_page_content[i][j])
+			{
+				ctx.fillStyle = "#000000";
+				ctx.fillRect(i*40,j*40,40,40)
+			}
+		}
+	}
+}
+
+var cell_width = 40;
+var pixel_page_content = [];
+for(var i=0;i<canvas_element.height/cell_width;i++)
+{
+	pixel_page_content[i] = [];
+
+	for(var j=0;j<canvas_element.width/cell_width;j++)
+	{
+		pixel_page_content[i][j] = 0;
+	}
+}
+
+function m_click(e)
+{
+ /*ctx.fillStyle = "#000000";
+ ctx.fillRect(tempX-15,tempY-15,40,40);*/
+}
+
+function m_move(e)
+{
+ tempX = e.pageX- canvas_element.offsetLeft;
+ tempY = e.pageY- canvas_element.offsetTop;
+ 
+ pixel_page_content[parseInt(tempX/40)][parseInt(tempY/40)]=1;
+}
+ </script>
+
+</body>
+</html>
