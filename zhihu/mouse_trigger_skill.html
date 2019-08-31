@@ -8,15 +8,17 @@
  
  <script>
  
- //鼠标移动程序,目前感觉纯用mousemove
- //确实可能会有些事件没执行完就跳去执行新的mousemove
- //要转成mouseover之类的进行初步改良
+  //已转成mouseover之类的进行初步改良
+  //只是就结果上来说好像不算改良
+  //还是不能直接用于游戏用途
+  
  
 	var canvas_element = document.createElement("canvas");
 	//canvas.setAttribute("width",640);
 	canvas_element.setAttribute("width",800);
 	//canvas.setAttribute("height",2550);
-	canvas_element.setAttribute("height",600);
+	//canvas_element.setAttribute("height",600);
+	canvas_element.setAttribute("height",800);
 	
 	canvas_element.style.cursor="none";
 	//这其实就是利用CSS语法调整滑鼠光标的另一种写法
@@ -64,7 +66,7 @@ function check_load()
  ctx.fillStyle="#FFFFFF";
  ctx.fillRect(0, 0, 800, 600);
 
-/*function temp_design(id,img,left,top,zIndex,width,height)
+function temp_design(id,img,left,top,zIndex,width,height)
 {
 	this.id=id;
 	this.image = new Image();
@@ -73,6 +75,7 @@ function check_load()
 	var self=this;
 	
 	this.image.onload = function(){self.draw_flag=true;}
+	//this.image.onmouseenter = function(){console.log("test");}
 	this.left= left;
 	this.top= top;
 	this.zIndex = zIndex; 
@@ -80,7 +83,7 @@ function check_load()
 	this.height=height;
 	this.draw_flag = false;
 	
-	$(canvas_element).on('handleClick', function(e, mouse) { 
+	/*$(canvas_element).on('handleClick', function(e, mouse) { 
 
         if (self.left < mouse.x && 
             self.left + self.width > mouse.x && 
@@ -89,40 +92,17 @@ function check_load()
 			
 			disappear(self);
         } 
-    });
+    });*/
 }
 //********************************************************************
 
 
-var test_1 = new temp_design("第1個","fox.jpg",0,600-20-204,3,180,204);
-
-var elements = [];
-	
-// Add element.
-elements.push(test_1);*/
-
-
-var timer = setInterval(re_draw,50);
+var timer = setInterval(re_draw,100);
 var tempX;
 var tempY;
 
-document.addEventListener("click",m_click,false);
-document.addEventListener("mousemove",m_move,false);
-
-function re_draw()
-{
-	for(var i=0;i<canvas_element.height/cell_width;i++)
-	{
-		for(var j=0;j<canvas_element.width/cell_width;j++)
-		{
-			if(pixel_page_content[i][j])
-			{
-				ctx.fillStyle = "#000000";
-				ctx.fillRect(i*40,j*40,40,40)
-			}
-		}
-	}
-}
+//document.addEventListener("click",m_click,false);
+//document.addEventListener("mousemove",m_move,false);
 
 var cell_width = 40;
 var pixel_page_content = [];
@@ -142,13 +122,59 @@ function m_click(e)
  ctx.fillRect(tempX-15,tempY-15,40,40);*/
 }
 
-function m_move(e)
+var elements = [];
+
+var div = [];
+
+for(var i=0;i<canvas_element.height/cell_width;i++)
+{
+	elements[i] = [];
+
+	for(var j=0;j<canvas_element.width/cell_width;j++)
+	{
+		//elements[i][j] = new temp_design(i*canvas_element.height/cell_width+j,"fox.jpg",40*i,40*j,3,40,40);
+		//elements[i][j].onmouseenter = function(){console.log("test");}
+		div[i*(canvas_element.height/cell_width)+j] = document.createElement('div') ;
+		div[i*(canvas_element.height/cell_width)+j].id = i*(canvas_element.height/cell_width)+j;
+		div[i*(canvas_element.height/cell_width)+j].style.left = j*40;
+		div[i*(canvas_element.height/cell_width)+j].style.top=i*40;
+		$(div[i*(canvas_element.height/cell_width)+j]).css({"position":"absolute","height":"40px","width":"40px"});
+		div[i*(canvas_element.height/cell_width)+j].onmouseenter = function(){pixel_page_content[parseInt(this.id/(canvas_element.height/cell_width))][this.id%(canvas_element.height/cell_width)]=1;}
+		//div[i*(canvas_element.height/cell_width)+j].onmouseleave = function(){pixel_page_content[parseInt(this.id/(canvas_element.height/cell_width))][this.id%(canvas_element.height/cell_width)]=1;}
+		document.body.appendChild(div[i*(canvas_element.height/cell_width)+j]);
+	}
+}
+
+function re_draw()
+{
+	/*elements[0].forEach(function(element) {
+	if(element.draw_flag)
+		{
+			ctx.drawImage(element.image,element.left, element.top);
+		}
+	});*/
+	
+	
+	for(var i=0;i<canvas_element.height/cell_width;i++)
+	{
+		for(var j=0;j<canvas_element.width/cell_width;j++)
+		{
+			if(pixel_page_content[i][j])
+			{
+				ctx.fillStyle = "#000000";
+				ctx.fillRect(j*40,i*40,40,40)
+			}
+		}
+	}
+}
+
+/*function m_move(e)
 {
  tempX = e.pageX- canvas_element.offsetLeft;
  tempY = e.pageY- canvas_element.offsetTop;
  
  pixel_page_content[parseInt(tempX/40)][parseInt(tempY/40)]=1;
-}
+}*/
  </script>
 
 </body>
